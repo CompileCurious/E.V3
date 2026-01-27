@@ -45,10 +45,10 @@ print("  ✓ Clean")
 print()
 
 # Build service executable
-print("[2/5] Building service executable...")
+print("[2/5] Building daemon executable...")
 service_cmd = [
     sys.executable, "-m", "PyInstaller",
-    "--name=EV3Service",
+    "--name=Daemon",
     "--onefile",
     "--noconsole",
     "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
@@ -65,17 +65,17 @@ service_cmd = [arg for arg in service_cmd if arg]  # Remove empty strings
 
 try:
     subprocess.check_call(service_cmd)
-    print("  ✓ Service executable built")
+    print("  ✓ Daemon executable built")
 except subprocess.CalledProcessError as e:
-    print(f"  ✗ Failed to build service: {e}")
+    print(f"  ✗ Failed to build daemon: {e}")
     sys.exit(1)
 print()
 
 # Build UI executable
-print("[3/5] Building UI executable...")
+print("[3/5] Building shell executable...")
 ui_cmd = [
     sys.executable, "-m", "PyInstaller",
-    "--name=EV3Companion",
+    "--name=Shell",
     "--onefile",
     "--windowed",
     "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
@@ -94,9 +94,9 @@ ui_cmd = [arg for arg in ui_cmd if arg]
 
 try:
     subprocess.check_call(ui_cmd)
-    print("  ✓ UI executable built")
+    print("  ✓ Shell executable built")
 except subprocess.CalledProcessError as e:
-    print(f"  ✗ Failed to build UI: {e}")
+    print(f"  ✗ Failed to build shell: {e}")
     sys.exit(1)
 print()
 
@@ -106,8 +106,8 @@ dist_folder = Path("dist/EV3_Package")
 dist_folder.mkdir(exist_ok=True)
 
 # Copy executables
-shutil.copy("dist/EV3Service.exe", dist_folder / "EV3Service.exe")
-shutil.copy("dist/EV3Companion.exe", dist_folder / "EV3Companion.exe")
+shutil.copy("dist/Daemon.exe", dist_folder / "Daemon.exe")
+shutil.copy("dist/Shell.exe", dist_folder / "Shell.exe")
 print("  ✓ Executables copied")
 
 # Copy configuration
@@ -148,18 +148,19 @@ echo ================================================
 echo E.V3 Privacy-Focused Desktop Companion
 echo ================================================
 echo.
-echo Starting service...
-start "EV3 Service" /MIN EV3Service.exe
+echo Starting daemon...
+start "E.V3 Daemon" /MIN Daemon.exe
 timeout /t 2 /nobreak >NUL
-echo Starting UI...
-start "EV3 UI" EV3Companion.exe
+echo Starting shell...
+start "E.V3 Shell" Shell.exe
 echo.
 echo ================================================
 echo E.V3 is now running!
 echo ================================================
 echo.
 echo Your companion should appear in the bottom-right corner.
-echo Close this window - the service will continue running.
+echo System tray icon available for control.
+echo Close this window - the daemon will continue running.
 echo.
 pause
 """)
@@ -223,7 +224,7 @@ echo Stopping service...
 net stop EV3CompanionService 2>NUL
 
 echo Uninstalling service...
-EV3Service.exe remove
+Daemon.exe remove
 
 echo.
 echo ================================================
@@ -272,8 +273,8 @@ Option 2: Windows Service (Recommended)
 - To uninstall: Uninstall_Service.bat
 
 MANUAL START:
-- Service: EV3Service.exe
-- UI: EV3Companion.exe
+- Daemon: Daemon.exe
+- Shell: Shell.exe
 
 FEATURES:
 ✓ Privacy-first design
@@ -306,8 +307,8 @@ print()
 print(f"Distribution package created in: {dist_folder.absolute()}")
 print()
 print("Contents:")
-print("  - EV3Service.exe       (Background service)")
-print("  - EV3Companion.exe     (UI application)")
+print("  - Daemon.exe           (Background daemon)")
+print("  - Shell.exe            (Shell UI with system tray)")
 print("  - Start_EV3.bat        (Quick launcher)")
 print("  - Install_Service.bat  (Service installer)")
 print("  - Uninstall_Service.bat (Service uninstaller)")

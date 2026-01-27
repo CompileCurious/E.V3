@@ -1,3 +1,5 @@
+
+
 @echo off
 REM E.V3 Complete Launcher - Starts both Daemon and Shell
 title E.V3 Launcher
@@ -16,7 +18,7 @@ start "E.V3 Shell" python main_ui.py
 
 echo.
 echo E.V3 is now running!
-echo - Daemon: Background service
+echo - Daemon: Background service  
 echo - Shell: UI with system tray icon
 echo.
 echo To control: Right-click the system tray icon
