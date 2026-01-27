@@ -59,6 +59,7 @@ class Mesh:
         self.ebo = None
         
         self.texture_id = None
+        self.use_immediate_mode = False  # For compatibility with older OpenGL
     
     def setup_gl_buffers(self):
         """Setup OpenGL buffers"""
@@ -98,6 +99,20 @@ class Mesh:
     
     def render(self):
         """Render the mesh"""
+        if self.use_immediate_mode:
+            # Use immediate mode for compatibility
+            glBegin(GL_TRIANGLES)
+            for i in range(0, len(self.indices), 3):
+                for j in range(3):
+                    idx = self.indices[i + j]
+                    if len(self.normals) > idx * 3:
+                        glNormal3f(self.normals[idx*3], self.normals[idx*3+1], self.normals[idx*3+2])
+                    if len(self.vertices) > idx * 3:
+                        glVertex3f(self.vertices[idx*3], self.vertices[idx*3+1], self.vertices[idx*3+2])
+            glEnd()
+            return
+        
+        # Modern OpenGL path
         if self.vao is None:
             return
         
@@ -250,35 +265,50 @@ class ModelLoader:
         """
         model = Model3D()
         
-        # Create a simple character mesh (sphere for head, cylinders for body)
+        # Create a simple character mesh (sphere)
         mesh = Mesh()
         
-        # Simple sphere vertices (low poly)
+        # Create sphere using latitude/longitude method
+        from OpenGL.GL import glBegin, glEnd, glVertex3f, glNormal3f, GL_TRIANGLES
+        import math
+        
+        # Store vertices for a sphere (20 segments)
+        segments = 20
+        rings = 20
         vertices = []
         indices = []
         
-        # Create a simple icosphere
-        t = (1.0 + np.sqrt(5.0)) / 2.0
+        for ring in range(rings + 1):
+            theta = ring * math.pi / rings
+            sin_theta = math.sin(theta)
+            cos_theta = math.cos(theta)
+            
+            for seg in range(segments + 1):
+                phi = seg * 2 * math.pi / segments
+                sin_phi = math.sin(phi)
+                cos_phi = math.cos(phi)
+                
+                x = cos_phi * sin_theta
+                y = cos_theta
+                z = sin_phi * sin_theta
+                
+                vertices.extend([x, y, z])
         
-        # 12 vertices of icosahedron
-        base_vertices = [
-            [-1,  t,  0], [ 1,  t,  0], [-1, -t,  0], [ 1, -t,  0],
-            [ 0, -1,  t], [ 0,  1,  t], [ 0, -1, -t], [ 0,  1, -t],
-            [ t,  0, -1], [ t,  0,  1], [-t,  0, -1], [-t,  0,  1]
-        ]
+        # Generate indices for triangle strips
+        for ring in range(rings):
+            for seg in range(segments):
+                first = ring * (segments + 1) + seg
+                second = first + segments + 1
+                
+                indices.extend([first, second, first + 1])
+                indices.extend([second, second + 1, first + 1])
         
-        mesh.vertices = np.array(base_vertices, dtype=np.float32).flatten()
+        mesh.vertices = np.array(vertices, dtype=np.float32)
+        mesh.indices = np.array(indices, dtype=np.uint32)
+        mesh.normals = mesh.vertices.copy()  # Sphere normals = positions
         
-        # Indices for icosahedron faces
-        mesh.indices = np.array([
-            0,11,5,  0,5,1,  0,1,7,  0,7,10,  0,10,11,
-            1,5,9,  5,11,4,  11,10,2,  10,7,6,  7,1,8,
-            3,9,4,  3,4,2,  3,2,6,  3,6,8,  3,8,9,
-            4,9,5,  2,4,11,  6,2,10,  8,6,7,  9,8,1
-        ], dtype=np.uint32)
-        
-        # Generate normals (simplified - just use vertex positions as normals)
-        mesh.normals = mesh.vertices.copy()
+        # Use immediate mode rendering for compatibility
+        mesh.use_immediate_mode = True
         
         model.add_mesh(mesh)
         

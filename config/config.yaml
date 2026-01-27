@@ -113,8 +113,8 @@ ui:
     directional_light: 0.8
   
   model:
-    # Path to 3D model
-    model_path: "models/character/character.vrm"
+    # Path to 3D model (leave empty to use simple test character)
+    model_path: ""
     # Scale
     scale: 1.0
     # Initial rotation
