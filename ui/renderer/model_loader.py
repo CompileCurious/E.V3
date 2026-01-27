@@ -149,6 +149,8 @@ class Model3D:
     
     def render(self):
         """Render the model"""
+        from OpenGL.GL import glColor4f
+        
         glPushMatrix()
         
         # Apply model transformations
@@ -157,6 +159,9 @@ class Model3D:
         glRotatef(self.rotation[1], 0, 1, 0)
         glRotatef(self.rotation[2], 0, 0, 1)
         glScalef(self.scale, self.scale, self.scale)
+        
+        # Set a visible color for the test character (light blue)
+        glColor4f(0.3, 0.7, 1.0, 1.0)
         
         # Render all meshes
         for mesh in self.meshes:

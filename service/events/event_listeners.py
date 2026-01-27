@@ -8,6 +8,7 @@ import win32evtlog
 import win32evtlogutil
 import win32con
 import wmi
+import pythoncom
 import threading
 from typing import Callable, Optional, List, Dict, Any
 from loguru import logger
@@ -203,6 +204,9 @@ class SystemEventListener:
     def _monitor(self):
         """Monitor system events"""
         try:
+            # Initialize COM for this thread
+            pythoncom.CoInitialize()
+            
             self.wmi = wmi.WMI()
             
             while self.running:
@@ -215,6 +219,12 @@ class SystemEventListener:
                 
         except Exception as e:
             logger.error(f"System monitoring error: {e}")
+        finally:
+            # Uninitialize COM when done
+            try:
+                pythoncom.CoUninitialize()
+            except:
+                pass
     
     def _check_system_state(self):
         """Check system state for important changes"""

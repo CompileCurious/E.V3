@@ -64,9 +64,8 @@ class CompanionWindow(QMainWindow):
         height = ui_config.get("height", 600)
         self.setFixedSize(width, height)
         
-        # Window opacity
-        opacity = ui_config.get("opacity", 0.95)
-        self.setWindowOpacity(opacity)
+        # Don't set window opacity - we want full opacity for the window
+        # Transparency is handled by OpenGL rendering
         
         self.setWindowTitle("E.V3 Shell")
     
