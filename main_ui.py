@@ -57,11 +57,14 @@ class EV3UIApplication:
         log_level = log_config.get("level", "INFO")
         
         logger.remove()
-        logger.add(
-            sys.stderr,
-            level=log_level,
-            format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>"
-        )
+        
+        # Add console handler only if stderr is available (not None in executables)
+        if sys.stderr is not None:
+            logger.add(
+                sys.stderr,
+                level=log_level,
+                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>"
+            )
         
         if log_config.get("log_to_file", True):
             log_file = "logs/ev3_ui.log"
