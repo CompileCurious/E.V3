@@ -60,12 +60,13 @@ class EV3Service:
         # Remove default handler
         logger.remove()
         
-        # Add console handler
-        logger.add(
-            sys.stderr,
-            level=log_level,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
-        )
+        # Add console handler only if stderr is available (not None in executables)
+        if sys.stderr is not None:
+            logger.add(
+                sys.stderr,
+                level=log_level,
+                format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
+            )
         
         # Add file handler if enabled
         if log_config.get("log_to_file", True):
