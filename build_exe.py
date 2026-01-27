@@ -9,6 +9,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+# Set UTF-8 encoding for console output on Windows
+if sys.platform == "win32":
+    import codecs
+    sys.stdout.reconfigure(encoding='utf-8')
+
 print("=" * 60)
 print("E.V3 Build Script")
 print("Creating standalone executables")
@@ -227,7 +232,7 @@ print("  ✓ Uninstall_Service.bat created")
 
 # Create README for distribution
 readme_dist = dist_folder / "START_HERE.txt"
-with open(readme_dist, "w") as f:
+with open(readme_dist, "w", encoding="utf-8") as f:
     f.write("""================================================
 E.V3 Privacy-Focused Desktop Companion
 ================================================

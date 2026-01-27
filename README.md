@@ -167,4 +167,19 @@ Place your VRoid or Blender exported model (with armature) in `models/` director
 
 ## License
 
-Private Project
+**Polyform Noncommercial License 1.0.0**
+
+E.V3 is free and open source for noncommercial use. You can:
+- ✅ Use it personally for any noncommercial purpose
+- ✅ Study and modify the code
+- ✅ Share it with others
+- ✅ Create derivatives for noncommercial purposes
+
+You **cannot**:
+- ❌ Use it for commercial purposes without permission
+- ❌ Profit from modifications or derivatives
+
+See [LICENSE.txt](LICENSE.txt) for full terms.
+
+For commercial licensing inquiries, please contact the project maintainers.
+
