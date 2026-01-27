@@ -1,13 +1,14 @@
 """
-Transparent Companion Window
-Frameless, always-on-top, click-through window with 3D character
+Transparent Shell Window
+Frameless, always-on-top window with 3D character and system tray control
 """
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QSystemTrayIcon, QMenu, QApplication
 from PySide6.QtCore import Qt, QPoint, QTimer
-from PySide6.QtGui import QScreen
+from PySide6.QtGui import QScreen, QIcon, QAction
 from typing import Dict, Any, Optional
 from loguru import logger
+import sys
 
 from ui.renderer import OpenGLRenderer
 from ui.animations import AnimationController
@@ -15,11 +16,11 @@ from ui.animations import AnimationController
 
 class CompanionWindow(QMainWindow):
     """
-    Main companion window
+    Main shell window
     - Transparent background
     - Frameless
     - Always on top
-    - Click-through when idle
+    - System tray control
     - Anchored to bottom-right above taskbar
     """
     
@@ -27,7 +28,7 @@ class CompanionWindow(QMainWindow):
         super().__init__()
         
         self.config = config
-        self.is_click_through = True
+        self.is_click_through = False  # Start non-click-through so it's controllable
         self.current_state = "idle"
         
         # Setup window properties
@@ -36,10 +37,13 @@ class CompanionWindow(QMainWindow):
         # Create UI
         self._create_ui()
         
+        # Setup system tray
+        self._setup_tray_icon()
+        
         # Position window
         self._position_window()
         
-        logger.info("Companion window initialized")
+        logger.info("Shell window initialized")
     
     def _setup_window(self):
         """Setup window flags and properties"""
@@ -47,8 +51,7 @@ class CompanionWindow(QMainWindow):
         self.setWindowFlags(
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint |
-            Qt.Tool |  # Don't show in taskbar
-            Qt.WindowTransparentForInput  # Click-through initially
+            Qt.Tool  # Don't show in taskbar
         )
         
         # Transparent background
@@ -65,7 +68,7 @@ class CompanionWindow(QMainWindow):
         opacity = ui_config.get("opacity", 0.95)
         self.setWindowOpacity(opacity)
         
-        self.setWindowTitle("E.V3 Companion")
+        self.setWindowTitle("E.V3 Shell")
     
     def _create_ui(self):
         """Create UI elements"""
@@ -109,6 +112,97 @@ class CompanionWindow(QMainWindow):
             self.anim_timer = QTimer(self)
             self.anim_timer.timeout.connect(self._update_animations)
             self.anim_timer.start(16)  # ~60 FPS
+    
+    def _setup_tray_icon(self):
+        """Setup system tray icon with menu"""
+        self.tray_icon = QSystemTrayIcon(self)
+        
+        # Create icon (use default for now)
+        from PySide6.QtWidgets import QStyle
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+        self.tray_icon.setIcon(icon)
+        
+        # Create menu
+        tray_menu = QMenu()
+        
+        # Show/Hide action
+        self.show_hide_action = QAction("Hide Shell", self)
+        self.show_hide_action.triggered.connect(self.toggle_visibility)
+        tray_menu.addAction(self.show_hide_action)
+        
+        tray_menu.addSeparator()
+        
+        # Stop Daemon action
+        stop_daemon_action = QAction("Stop Daemon", self)
+        stop_daemon_action.triggered.connect(self.stop_daemon)
+        tray_menu.addAction(stop_daemon_action)
+        
+        tray_menu.addSeparator()
+        
+        # Exit action
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(self.quit_application)
+        tray_menu.addAction(exit_action)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.setToolTip("E.V3 Shell")
+        
+        # Double-click to show/hide
+        self.tray_icon.activated.connect(self.tray_icon_activated)
+        
+        self.tray_icon.show()
+        logger.info("System tray icon created")
+    
+    def tray_icon_activated(self, reason):
+        """Handle tray icon activation"""
+        if reason == QSystemTrayIcon.DoubleClick:
+            self.toggle_visibility()
+    
+    def toggle_visibility(self):
+        """Toggle window visibility"""
+        if self.isVisible():
+            self.hide()
+            self.show_hide_action.setText("Show Shell")
+            logger.info("Shell hidden")
+        else:
+            self.show()
+            self.show_hide_action.setText("Hide Shell")
+            logger.info("Shell shown")
+    
+    def stop_daemon(self):
+        """Stop the daemon service"""
+        import subprocess
+        try:
+            # Try to stop EV3Service.exe
+            subprocess.run(["taskkill", "/F", "/IM", "EV3Daemon.exe"], 
+                          capture_output=True)
+            self.tray_icon.showMessage(
+                "E.V3",
+                "Daemon stopped",
+                QSystemTrayIcon.Information,
+                2000
+            )
+            logger.info("Daemon stop requested")
+        except Exception as e:
+            logger.error(f"Failed to stop daemon: {e}")
+    
+    def quit_application(self):
+        """Quit the application"""
+        logger.info("Quitting application")
+        self.tray_icon.hide()
+        QApplication.instance().quit()
+    
+    def closeEvent(self, event):
+        """Handle window close - hide to tray instead"""
+        event.ignore()
+        self.hide()
+        self.show_hide_action.setText("Show Shell")
+        self.tray_icon.showMessage(
+            "E.V3",
+            "Shell hidden to system tray",
+            QSystemTrayIcon.Information,
+            2000
+        )
     
     def _position_window(self):
         """Position window at bottom-right above taskbar"""

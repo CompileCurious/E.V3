@@ -1,24 +1,26 @@
 # E.V3 - Privacy-Focused Desktop Companion
 
-A privacy-first desktop companion with a 3D animated character that runs as a native Windows service.
+A privacy-first desktop companion with a 3D animated character consisting of a background daemon and interactive shell.
 
 ## Features
 
 - **Privacy First**: No data scraping, no raw logs sent, all processing local by default
-- **Native Windows Service**: Runs in background, monitors system events
+- **Native Windows Daemon**: Runs in background, monitors system events
+- **Interactive Shell**: System tray control with Show/Hide, Stop Daemon, Exit menu
 - **3D Animated Character**: VRoid/Blender models with bone animations and blendshapes
 - **Local LLM**: Mistral 7B quantized for personality and event interpretation
 - **Optional External LLM**: GPT mini API only when explicitly requested
 - **Event Monitoring**: Windows Defender, Firewall, System notifications
 - **Calendar Integration**: Surface reminders from your calendar
-- **Transparent UI**: Always-on-top, frameless, click-through window
-- **Native IPC**: Fast communication between service and UI
+- **Transparent UI**: Frameless window with proper transparency support
+- **System Tray Control**: Full control via system tray icon
+- **Native IPC**: Fast communication between daemon and shell
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────┐
-│   Background Service (Windows)      │
+│   E.V3 Daemon (Background Service)  │
 │  ┌──────────────────────────────┐   │
 │  │   State Machine               │   │
 │  │   (idle/scanning/alert/       │   │
@@ -44,10 +46,16 @@ A privacy-first desktop companion with a 3D animated character that runs as a na
               │ (Named Pipes)
               ▼
 ┌─────────────────────────────────────┐
-│   3D UI Layer (PySide6 + OpenGL)    │
+│   E.V3 Shell (3D UI with Tray)      │
+│  ┌──────────────────────────────┐   │
+│  │   System Tray Icon            │   │
+│  │   - Show/Hide Shell           │   │
+│  │   - Stop Daemon               │   │
+│  │   - Exit                      │   │
+│  └──────────────────────────────┘   │
 │  ┌──────────────────────────────┐   │
 │  │   Transparent Window          │   │
-│  │   Bottom-right, Always-on-top │   │
+│  │   Bottom-right, Moveable      │   │
 │  └──────────────────────────────┘   │
 │  ┌──────────────────────────────┐   │
 │  │   3D Model Renderer           │   │
@@ -110,29 +118,46 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Executable Version
-```bash
-# Quick start
-Start_EV3.bat
-
-# Or install as service
-Install_Service.bat  (as Administrator)
-EV3Companion.exe
+### Quick Start (Recommended)
+```batch
+# Start both Daemon and Shell
+start_ev3.bat
 ```
 
-### Python Version
+The Shell will appear in your system tray. Right-click the icon for options.
+
+### Separate Launch
+```batch
+# Start Daemon (background service)
+start_daemon.bat
+
+# Start Shell (UI with system tray)
+start_shell.bat
+```
+
+### Python Direct
 ```bash
-# Run as service
+# Run daemon
 python main_service.py
 
-# Run UI
+# Run shell (in separate terminal)
 python main_ui.py
+```
 
-# Or use quick start
-python start.py
+### System Tray Control
+Once the Shell is running:
+- **Find Icon**: Check Windows system tray (bottom-right, may be in hidden icons)
+- **Show/Hide**: Double-click icon or use "Show/Hide Shell" menu
+- **Stop Daemon**: Right-click → "Stop Daemon"
+- **Exit**: Right-click → "Exit"
 
-# Install as Windows service
-python install_service.py install
+### Executable Version (when built)
+```bash
+# Run daemon
+dist/EV3Daemon.exe
+
+# Run shell
+dist/EV3Shell.exe
 ```
 
 ## Building Executables

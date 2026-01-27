@@ -35,12 +35,17 @@ class OpenGLRenderer(QOpenGLWidget):
         self.animation_time = 0.0
         self.animation_speed = 1.0
         
-        # Setup format
+        # Setup format - use Compatibility profile for legacy OpenGL functions
         fmt = QSurfaceFormat()
-        fmt.setVersion(3, 3)
-        fmt.setProfile(QSurfaceFormat.CoreProfile)
+        fmt.setVersion(2, 1)  # OpenGL 2.1 for compatibility
+        fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
         fmt.setSamples(4)  # Antialiasing
+        fmt.setAlphaBufferSize(8)  # Enable alpha channel
         self.setFormat(fmt)
+        
+        # Make widget transparent
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet("background: transparent;")
         
         # Setup timer for animation
         self.timer = QTimer(self)

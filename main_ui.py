@@ -30,8 +30,8 @@ class EV3UIApplication:
         
         # Qt application
         self.app = QApplication(sys.argv)
-        self.app.setApplicationName("E.V3 Companion")
-        self.app.setQuitOnLastWindowClosed(False)
+        self.app.setApplicationName("E.V3 Shell")
+        self.app.setQuitOnLastWindowClosed(False)  # Don't quit when hiding to tray
         
         # Main window
         self.window: CompanionWindow = None

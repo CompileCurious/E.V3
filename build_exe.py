@@ -35,8 +35,12 @@ print()
 print("[1/5] Cleaning previous builds...")
 for folder in ["build", "dist"]:
     if os.path.exists(folder):
-        shutil.rmtree(folder)
-        print(f"  Removed {folder}/")
+        try:
+            shutil.rmtree(folder)
+            print(f"  Removed {folder}/")
+        except PermissionError as e:
+            print(f"  Warning: Could not remove {folder}/ - {e}")
+            print(f"  Some files may be in use. Will attempt to overwrite.")
 print("  ✓ Clean")
 print()
 
