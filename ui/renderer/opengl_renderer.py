@@ -1,0 +1,181 @@
+"""
+OpenGL 3D Renderer Widget
+Renders 3D character model with animations
+"""
+
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QSurfaceFormat
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import numpy as np
+from typing import Optional, Dict, Any
+from loguru import logger
+
+from .model_loader import Model3D, ModelLoader
+
+
+class OpenGLRenderer(QOpenGLWidget):
+    """
+    OpenGL widget for rendering 3D character
+    """
+    
+    def __init__(self, parent=None, config: Dict[str, Any] = None):
+        super().__init__(parent)
+        
+        self.config = config or {}
+        self.model: Optional[Model3D] = None
+        
+        # Camera
+        self.camera_distance = 3.0
+        self.camera_angle_x = 0.0
+        self.camera_angle_y = 0.0
+        
+        # Animation
+        self.animation_time = 0.0
+        self.animation_speed = 1.0
+        
+        # Setup format
+        fmt = QSurfaceFormat()
+        fmt.setVersion(3, 3)
+        fmt.setProfile(QSurfaceFormat.CoreProfile)
+        fmt.setSamples(4)  # Antialiasing
+        self.setFormat(fmt)
+        
+        # Setup timer for animation
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_animation)
+        fps = self.config.get("rendering", {}).get("fps", 60)
+        self.timer.start(1000 // fps)
+        
+        logger.info("OpenGL renderer initialized")
+    
+    def initializeGL(self):
+        """Initialize OpenGL"""
+        # Set clear color (transparent or background color)
+        glClearColor(0.0, 0.0, 0.0, 0.0)  # Transparent
+        
+        # Enable depth testing
+        glEnable(GL_DEPTH_TEST)
+        
+        # Enable blending for transparency
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        # Enable lighting
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        
+        # Setup light
+        ambient = self.config.get("rendering", {}).get("ambient_light", 0.6)
+        directional = self.config.get("rendering", {}).get("directional_light", 0.8)
+        
+        glLightfv(GL_LIGHT0, GL_AMBIENT, [ambient, ambient, ambient, 1.0])
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, [directional, directional, directional, 1.0])
+        glLightfv(GL_LIGHT0, GL_POSITION, [1.0, 1.0, 1.0, 0.0])
+        
+        # Enable color material
+        glEnable(GL_COLOR_MATERIAL)
+        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
+        
+        # Load model
+        self.load_model()
+        
+        logger.info("OpenGL initialized")
+    
+    def resizeGL(self, w, h):
+        """Handle resize"""
+        glViewport(0, 0, w, h)
+        
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        
+        aspect = w / h if h > 0 else 1.0
+        gluPerspective(45.0, aspect, 0.1, 100.0)
+        
+        glMatrixMode(GL_MODELVIEW)
+    
+    def paintGL(self):
+        """Render scene"""
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        
+        # Setup camera
+        glTranslatef(0.0, 0.0, -self.camera_distance)
+        glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
+        glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
+        
+        # Render model
+        if self.model:
+            self.model.render()
+        
+        glFlush()
+    
+    def load_model(self):
+        """Load 3D character model"""
+        model_path = self.config.get("ui", {}).get("model", {}).get("model_path", "")
+        
+        if not model_path:
+            logger.warning("No model path specified, using simple character")
+            self.model = ModelLoader.create_simple_character()
+            return
+        
+        # Try to load model
+        if model_path.endswith('.vrm'):
+            self.model = ModelLoader.load_vrm(model_path)
+        elif model_path.endswith(('.gltf', '.glb')):
+            self.model = ModelLoader.load_gltf(model_path)
+        else:
+            logger.warning(f"Unsupported model format: {model_path}")
+            self.model = ModelLoader.create_simple_character()
+        
+        if not self.model:
+            logger.warning("Failed to load model, using simple character")
+            self.model = ModelLoader.create_simple_character()
+        
+        # Apply initial transformations
+        scale = self.config.get("ui", {}).get("model", {}).get("scale", 1.0)
+        self.model.scale = scale
+        
+        rotation = self.config.get("ui", {}).get("model", {}).get("rotation", [0, 0, 0])
+        self.model.rotation = np.array(rotation, dtype=np.float32)
+        
+        position = self.config.get("ui", {}).get("model", {}).get("position", [0, 0, 0])
+        self.model.position = np.array(position, dtype=np.float32)
+    
+    def update_animation(self):
+        """Update animation state"""
+        # Increment animation time
+        dt = 1.0 / self.config.get("rendering", {}).get("fps", 60)
+        self.animation_time += dt * self.animation_speed
+        
+        # Update model animations
+        if self.model:
+            self.model.update_skeleton()
+        
+        # Trigger repaint
+        self.update()
+    
+    def set_camera_angle(self, x: float, y: float):
+        """Set camera angles"""
+        self.camera_angle_x = x
+        self.camera_angle_y = y
+    
+    def set_camera_distance(self, distance: float):
+        """Set camera distance"""
+        self.camera_distance = max(1.0, min(10.0, distance))
+    
+    def apply_glow_effect(self, intensity: float = 0.5, color: tuple = (0.3, 0.6, 1.0)):
+        """
+        Apply glow effect to character
+        Used for alerts and special states
+        """
+        # This is simplified - proper glow would use shaders
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+        
+        # Increase ambient light temporarily
+        glow_ambient = [color[0] * intensity, color[1] * intensity, color[2] * intensity, 1.0]
+        glLightfv(GL_LIGHT0, GL_AMBIENT, glow_ambient)

@@ -1,0 +1,162 @@
+# E.V3 Configuration
+
+# Privacy settings
+privacy:
+  # Only use local LLM by default
+  local_only: true
+  # Allow external LLM only on explicit "find out" trigger
+  allow_external_on_request: true
+  # Never send raw logs or personal data
+  no_telemetry: true
+  # Anonymize events before processing
+  anonymize_events: true
+  # Keep all data local
+  local_storage_only: true
+
+# Service settings
+service:
+  name: "E.V3 Companion Service"
+  display_name: "E.V3 Privacy Companion"
+  description: "Privacy-focused desktop companion background service"
+  # Auto-start with Windows
+  auto_start: true
+  # Restart on failure
+  restart_on_failure: true
+
+# State machine
+state_machine:
+  initial_state: "idle"
+  states:
+    - idle
+    - scanning
+    - alert
+    - reminder
+  # Transition timeouts (seconds)
+  idle_timeout: 300  # 5 minutes
+  scan_interval: 60  # 1 minute
+  alert_duration: 30  # 30 seconds
+
+# Event monitoring
+events:
+  windows_defender:
+    enabled: true
+    # Monitor specific event IDs
+    event_ids: [1116, 1117, 5001, 5010, 5012]
+  firewall:
+    enabled: true
+    # Monitor firewall rule changes
+    monitor_rule_changes: true
+  system_notifications:
+    enabled: true
+    # Filter by notification type
+    types: ["security", "system", "update"]
+
+# LLM settings
+llm:
+  local:
+    enabled: true
+    model: "mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+    model_path: "models/llm/"
+    context_length: 4096
+    temperature: 0.7
+    max_tokens: 256
+    # Use GPU if available
+    use_gpu: true
+    gpu_layers: 35
+  external:
+    enabled: false  # Only enabled on "find out" trigger
+    provider: "openai"
+    model: "gpt-4o-mini"
+    api_key_env: "OPENAI_API_KEY"
+    max_tokens: 512
+    temperature: 0.7
+    # Trigger phrase
+    trigger_phrase: "find out"
+
+# Calendar integration
+calendar:
+  enabled: true
+  provider: "outlook"  # or "google"
+  check_interval: 300  # 5 minutes
+  reminder_advance: 900  # 15 minutes before event
+  # OAuth credentials path
+  credentials_path: "config/credentials/"
+
+# UI settings
+ui:
+  window:
+    # Position
+    position: "bottom_right"
+    offset_x: 20  # pixels from right edge
+    offset_y: 20  # pixels from bottom (above taskbar)
+    # Size
+    width: 400
+    height: 600
+    # Transparency
+    opacity: 0.95
+    background_opacity: 0.0  # Fully transparent background
+    # Always on top
+    always_on_top: true
+    # Click-through when idle
+    click_through_when_idle: true
+    # Frameless
+    frameless: true
+  
+  rendering:
+    # Renderer: "opengl" or "panda3d"
+    renderer: "opengl"
+    fps: 60
+    vsync: true
+    antialiasing: true
+    # Lighting
+    ambient_light: 0.6
+    directional_light: 0.8
+  
+  model:
+    # Path to 3D model
+    model_path: "models/character/character.vrm"
+    # Scale
+    scale: 1.0
+    # Initial rotation
+    rotation: [0, 0, 0]
+    # Initial position
+    position: [0, 0, 0]
+  
+  animations:
+    # Idle animations
+    idle_breathing:
+      enabled: true
+      speed: 0.5
+      intensity: 0.3
+    eye_blinking:
+      enabled: true
+      interval_min: 2.0  # seconds
+      interval_max: 6.0
+      duration: 0.15
+    # Glow effects
+    glow:
+      enabled: true
+      color: [0.3, 0.6, 1.0]  # RGB
+      intensity: 0.5
+      pulse: true
+      pulse_speed: 1.0
+
+# IPC settings
+ipc:
+  # Use Windows named pipes
+  method: "named_pipe"
+  pipe_name: "\\\\.\\pipe\\E.V3"
+  # Buffer size
+  buffer_size: 4096
+  # Timeout (milliseconds)
+  timeout: 5000
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_to_file: true
+  log_file: "logs/ev3.log"
+  max_file_size: 10485760  # 10 MB
+  backup_count: 5
+  # Privacy: don't log sensitive data
+  sanitize_logs: true

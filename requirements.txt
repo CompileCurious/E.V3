@@ -1,0 +1,57 @@
+# Core dependencies
+PySide6>=6.6.0
+PyQt6-WebEngine>=6.6.0  # For advanced features if needed
+PyOpenGL>=3.1.7
+PyOpenGL-accelerate>=3.1.7
+numpy>=1.24.0
+pillow>=10.0.0
+
+# 3D rendering and animation
+panda3d>=1.10.13
+pygltflib>=1.16.0  # For loading GLTF/GLB models
+pyassimp>=4.1.4  # Model loading
+
+# LLM integration
+llama-cpp-python>=0.2.0  # For local Mistral 7B
+openai>=1.0.0  # For GPT mini API
+requests>=2.31.0
+
+# Windows service
+pywin32>=306
+wmi>=1.5.1  # Windows Management Instrumentation
+pywinauto>=0.6.8  # For window automation
+
+# Event monitoring
+watchdog>=3.0.0  # File system monitoring
+psutil>=5.9.0  # System monitoring
+
+# Calendar integration
+O365>=2.0.27  # Microsoft 365/Outlook calendar
+google-auth>=2.23.0  # Google Calendar
+google-auth-oauthlib>=1.1.0
+google-api-python-client>=2.100.0
+
+# IPC and communication
+pyzmq>=25.1.0  # Zero MQ for IPC (alternative)
+# Note: We'll primarily use native Windows named pipes via win32pipe
+
+# State management
+transitions>=0.9.0  # State machine library
+
+# Configuration
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+# Logging and monitoring
+loguru>=0.7.0
+
+# Audio (optional, for voice/sound effects)
+sounddevice>=0.4.6
+soundfile>=0.12.1
+
+# Utilities
+pydantic>=2.0.0  # Data validation
+rich>=13.6.0  # Beautiful terminal output
+
+# Building (optional - for creating executables)
+pyinstaller>=6.0.0  # Create standalone executables
