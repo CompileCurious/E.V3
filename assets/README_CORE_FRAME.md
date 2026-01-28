@@ -1,11 +1,15 @@
-# Core Frame SVG
+# Core Frame Vector Image
 
-Place your vector robot frame image here as `core_frame.svg`
+Place your vector robot frame image here as `core_frame.eps` or `core_frame.svg`
 
-## Expected Format
-- SVG (Scalable Vector Graphics)
-- Dimensions: 500x550px (or any aspect ratio, will be scaled)
+## Supported Formats
+- **EPS** (Encapsulated PostScript) - Preferred
+- **SVG** (Scalable Vector Graphics) - Alternative
+
+## Expected Specifications
+- Dimensions: 500x550px recommended (will be scaled to fit)
 - Transparent background recommended
+- Clear definition of body parts (skull, throat, chest, etc.)
 
 ## Component Positions
 
@@ -20,10 +24,16 @@ The clickable regions are positioned based on the following body parts:
 
 ## Placeholder
 
-Until you upload `core_frame.svg`, the system will display a simple geometric robot frame as a placeholder.
+Until you upload `core_frame.eps` or `core_frame.svg`, the system will display a simple geometric robot frame as a placeholder.
 
-To add your custom frame:
-1. Create or download a robot frame SVG
-2. Save it as `assets/core_frame.svg`
-3. Restart the application
-4. The Core window will automatically use your custom image
+## To Add Your Custom Frame:
+1. Create or download a robot frame vector image
+2. Save it as `assets/core_frame.eps` (or `core_frame.svg`)
+3. If using EPS, ensure Pillow is installed: `pip install pillow`
+4. Restart the application
+5. The Core window will automatically use your custom image
+
+## Notes
+- EPS files require the Pillow library for rendering
+- The system will try EPS first, then fall back to SVG
+- If neither is found, a geometric placeholder is displayed
