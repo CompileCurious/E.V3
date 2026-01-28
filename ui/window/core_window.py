@@ -3,10 +3,10 @@ Core Configuration Window
 Interactive robot frame for selecting models and components
 """
 
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QLabel, 
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                 QFileDialog, QMessageBox, QGraphicsView, 
-                                QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem)
-from PySide6.QtCore import Qt, QRectF, QPointF, Signal
+                                QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, QLineEdit)
+from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPixmap, QFont, QPainterPath
 from PySide6.QtSvg import QSvgRenderer
 from loguru import logger
@@ -24,37 +24,35 @@ class ClickableRegion(QGraphicsEllipseItem):
         self.parent_window = parent_window
         self.is_hovered = False
         
-        # Make regions visible for positioning
-        self.setPen(QPen(QColor(255, 100, 100, 100), 2))
-        self.setBrush(QBrush(QColor(255, 100, 100, 50)))
+        # Start invisible
+        self.setPen(QPen(QColor(0, 0, 0, 0), 0))
+        self.setBrush(QBrush(QColor(0, 0, 0, 0)))
+        
+        # Set tooltip
+        self.setToolTip(tooltip_text)
         
         # Enable hover events
         self.setAcceptHoverEvents(True)
         self.setCursor(Qt.PointingHandCursor)
     
     def hoverEnterEvent(self, event):
-        """Handle hover enter - glow effect"""
+        """Handle hover enter - blue glow effect"""
         self.is_hovered = True
         
-        # Show glow effect
-        glow_color = QColor(100, 200, 255, 150)
-        self.setPen(QPen(glow_color, 3))
-        self.setBrush(QBrush(glow_color))
-        
-        # Show tooltip with position info
-        rect = self.rect()
-        pos_info = f"\n[Position: x={int(rect.x())}, y={int(rect.y())}, w={int(rect.width())}, h={int(rect.height())}]"
-        self.setToolTip(self.tooltip_text + pos_info)
+        # Show blue glow effect
+        glow_color = QColor(100, 180, 255, 180)
+        self.setPen(QPen(glow_color, 4))
+        self.setBrush(QBrush(QColor(100, 180, 255, 100)))
         
         super().hoverEnterEvent(event)
     
     def hoverLeaveEvent(self, event):
-        """Handle hover leave - remove glow"""
+        """Handle hover leave - return to invisible"""
         self.is_hovered = False
         
-        # Return to subtle visible state
-        self.setPen(QPen(QColor(255, 100, 100, 100), 2))
-        self.setBrush(QBrush(QColor(255, 100, 100, 50)))
+        # Return to invisible
+        self.setPen(QPen(QColor(0, 0, 0, 0), 0))
+        self.setBrush(QBrush(QColor(0, 0, 0, 0)))
         
         super().hoverLeaveEvent(event)
     
@@ -73,37 +71,37 @@ class CoreWindow(QMainWindow):
     # Component definitions: (x, y, width, height, type, tooltip, folder)
     COMPONENTS = {
         "skull": {
-            "rect": (210, 50, 80, 80),
+            "rect": (420, 140, 90, 100),
             "tooltip": "🧠 Brain / LLM\nClick to select the AI model that powers responses and reasoning",
             "folder": "models/llm",
             "filter": "GGUF Models (*.gguf);;All Files (*.*)"
         },
         "throat": {
-            "rect": (230, 140, 40, 50),
+            "rect": (435, 240, 60, 50),
             "tooltip": "🗣️ Voice / TTS\nClick to select the text-to-speech voice model",
             "folder": "models/voice",
             "filter": "Voice Models (*.onnx *.pth *.bin);;All Files (*.*)"
         },
         "ears": {
-            "rect": (160, 70, 30, 40),
+            "rect": (390, 160, 50, 60),
             "tooltip": "👂 Ears / STT\nClick to select the speech-to-text listening model",
             "folder": "models/speech",
             "filter": "Speech Models (*.onnx *.pth *.bin);;All Files (*.*)"
         },
         "heart": {
-            "rect": (215, 210, 70, 60),
+            "rect": (420, 340, 80, 70),
             "tooltip": "❤️ Heart / Personality\nClick to select the personality/character profile",
             "folder": "models/character",
             "filter": "Character Models (*.vrm *.glb *.gltf *.yaml);;All Files (*.*)"
         },
         "eyes": {
-            "rect": (340, 70, 30, 40),
+            "rect": (490, 160, 50, 60),
             "tooltip": "👁️ Eyes / Vision\nClick to select the computer vision model",
             "folder": "models/vision",
             "filter": "Vision Models (*.onnx *.pth *.bin);;All Files (*.*)"
         },
         "chest": {
-            "rect": (200, 280, 100, 80),
+            "rect": (410, 430, 100, 90),
             "tooltip": "💾 Core / Settings\nClick to configure core system settings",
             "folder": "config",
             "filter": "Config Files (*.yaml *.json);;All Files (*.*)"
@@ -114,7 +112,7 @@ class CoreWindow(QMainWindow):
         super().__init__(parent)
         
         self.setWindowTitle("E.V3 Core Configuration")
-        self.setFixedSize(650, 800)
+        self.setFixedSize(500, 650)
         
         # Setup UI
         self._setup_ui()
@@ -146,7 +144,7 @@ class CoreWindow(QMainWindow):
         layout.addWidget(title)
         
         # Description
-        desc = QLabel("Click on different parts of the robot to configure components")
+        desc = QLabel("Click on components of E.V3's frame to select modules")
         desc.setStyleSheet("""
             QLabel {
                 font-size: 12px;
@@ -172,18 +170,53 @@ class CoreWindow(QMainWindow):
         # Add clickable regions
         self._add_clickable_regions()
         
-        # Status label
-        self.status_label = QLabel("Ready to configure")
-        self.status_label.setStyleSheet("""
+        # Terminal-style commit widget
+        terminal_widget = QWidget()
+        terminal_layout = QHBoxLayout(terminal_widget)
+        terminal_layout.setContentsMargins(10, 5, 10, 5)
+        
+        self.commit_label = QLabel("commit_to_core? (Y/N)")
+        self.commit_label.setStyleSheet("""
             QLabel {
+                font-family: 'Consolas', 'Courier New', monospace;
                 font-size: 11px;
-                color: #aaa;
+                color: #64B5F6;
                 padding: 5px;
-                background: #1e1e1e;
+                background: #1a1a1a;
+            }
+        """)
+        
+        self.commit_input = QLineEdit()
+        self.commit_input.setMaxLength(1)
+        self.commit_input.setFixedWidth(30)
+        self.commit_input.setStyleSheet("""
+            QLineEdit {
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 11px;
+                color: #64B5F6;
+                background: #1a1a1a;
+                border: 1px solid #444;
+                padding: 3px;
+            }
+        """)
+        self.commit_input.returnPressed.connect(self._handle_commit)
+        
+        terminal_layout.addWidget(self.commit_label)
+        terminal_layout.addWidget(self.commit_input)
+        terminal_layout.addStretch()
+        
+        terminal_widget.setStyleSheet("""
+            QWidget {
+                background: #1a1a1a;
+                border: 1px solid #333;
                 border-radius: 3px;
             }
         """)
-        layout.addWidget(self.status_label)
+        
+        layout.addWidget(terminal_widget)
+        
+        # Track pending changes
+        self.pending_changes = {}
     
     def _center_window(self):
         """Center window on screen"""
@@ -220,21 +253,15 @@ class CoreWindow(QMainWindow):
                     # Load PNG directly
                     pixmap = QPixmap(img_path)
                     if not pixmap.isNull():
-                        # Get original size and scale up significantly
-                        original_width = pixmap.width()
-                        original_height = pixmap.height()
-                        # Scale to at least 600px wide while maintaining aspect ratio
-                        scale_factor = max(600.0 / original_width, 700.0 / original_height)
-                        new_width = int(original_width * scale_factor)
-                        new_height = int(original_height * scale_factor)
-                        pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                        logger.info(f"Loaded PNG core frame from {img_path}, scaled from {original_width}x{original_height} to {new_width}x{new_height}")
+                        # Scale to a reasonable size
+                        pixmap = pixmap.scaled(480, 580, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        logger.info(f"Loaded PNG core frame from {img_path}")
                         break
                 
                 elif img_path.endswith('.svg'):
                     # Load SVG
                     renderer = QSvgRenderer(img_path)
-                    pixmap = QPixmap(600, 700)
+                    pixmap = QPixmap(480, 580)
                     pixmap.fill(Qt.transparent)
                     
                     painter = QPainter(pixmap)
@@ -258,13 +285,8 @@ class CoreWindow(QMainWindow):
                     
                     pixmap = QPixmap()
                     pixmap.loadFromData(buffer.read())
-                    # Scale larger
-                    original_width = pixmap.width()
-                    original_height = pixmap.height()
-                    scale_factor = max(600.0 / original_width, 700.0 / original_height)
-                    new_width = int(original_width * scale_factor)
-                    new_height = int(original_height * scale_factor)
-                    pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    # Scale to reasonable size
+                    pixmap = pixmap.scaled(480, 580, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     
                     logger.info(f"Loaded EPS core frame from {img_path}")
                     break
@@ -275,7 +297,14 @@ class CoreWindow(QMainWindow):
                 logger.error(f"Failed to load {img_path}: {e}")
         
         if pixmap:
-            self.scene.addPixmap(pixmap)
+            # Add pixmap and center it in the scene
+            pixmap_item = self.scene.addPixmap(pixmap)
+            
+            # Set scene rect to match the pixmap size
+            self.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
+            
+            # Fit the view to show the entire scene
+            self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         else:
             # Draw placeholder robot frame
             logger.info("SVG not found, drawing placeholder robot")
@@ -333,6 +362,127 @@ class CoreWindow(QMainWindow):
             # Create clickable region
             region = ClickableRegion(x, y, w, h, component_id, tooltip, self)
             self.scene.addItem(region)
+            logger.debug(f"Added clickable region for {component_id} at ({x}, {y}, {w}, {h})")
+    
+    def _handle_commit(self):
+        """Handle Y/N commit input"""
+        response = self.commit_input.text().upper()
+        self.commit_input.clear()
+        
+        if response == 'Y':
+            if self.pending_changes:
+                # Save all pending changes
+                import yaml
+                config_file = os.path.join("config", "core_components.yaml")
+                
+                # Load existing config
+                if os.path.exists(config_file):
+                    with open(config_file, 'r') as f:
+                        config = yaml.safe_load(f) or {}
+                else:
+                    config = {}
+                
+                # Update with pending changes
+                config.update(self.pending_changes)
+                
+                # Save configuration
+                os.makedirs(os.path.dirname(config_file), exist_ok=True)
+                with open(config_file, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                
+                self.commit_label.setText(f"✓ Committed {len(self.pending_changes)} module(s)")
+                self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #4CAF50;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """)
+                self.pending_changes = {}
+                
+                # Reset after 2 seconds
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #64B5F6;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """))
+            else:
+                self.commit_label.setText("⚠ No pending changes")
+                self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #FFA726;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """)
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #64B5F6;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """))
+        elif response == 'N':
+            if self.pending_changes:
+                count = len(self.pending_changes)
+                self.pending_changes = {}
+                self.commit_label.setText(f"✗ Discarded {count} change(s)")
+                self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #EF5350;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """)
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #64B5F6;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """))
+            else:
+                self.commit_label.setText("⚠ No pending changes")
+                self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #FFA726;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """)
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
+                    QLabel {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        color: #64B5F6;
+                        padding: 5px;
+                        background: #1a1a1a;
+                    }
+                """))
     
     def select_component(self, component_type: str):
         """Open file picker for component selection"""
@@ -362,48 +512,22 @@ class CoreWindow(QMainWindow):
     
     def _apply_component_selection(self, component_type: str, file_path: str):
         """Apply the selected component"""
-        import yaml
-        
         logger.info(f"Selected {component_type}: {file_path}")
         
-        # Update status
-        self.status_label.setText(f"✓ {component_type.title()} configured: {os.path.basename(file_path)}")
-        self.status_label.setStyleSheet("""
-            QLabel {
-                font-size: 11px;
-                color: #4CAF50;
-                padding: 5px;
-                background: #1e1e1e;
-                border-radius: 3px;
-            }
-        """)
-        
-        # Save to configuration
-        config_file = os.path.join("config", "core_components.yaml")
-        
-        # Load existing config
-        if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                config = yaml.safe_load(f) or {}
-        else:
-            config = {}
-        
-        # Update component
-        config[component_type] = {
+        # Add to pending changes
+        self.pending_changes[component_type] = {
             "path": file_path,
             "enabled": True
         }
         
-        # Save config
-        os.makedirs("config", exist_ok=True)
-        with open(config_file, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
-        
-        # Show confirmation
-        QMessageBox.information(
-            self,
-            "Component Updated",
-            f"{component_type.title()} has been configured.\n\nFile: {os.path.basename(file_path)}\n\nRestart the daemon to apply changes."
-        )
-        
-        logger.info(f"Component {component_type} saved to config")
+        # Update commit prompt
+        self.commit_label.setText(f"commit_to_core? (Y/N) [{len(self.pending_changes)} pending]")
+        self.commit_label.setStyleSheet("""
+            QLabel {
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 11px;
+                color: #FFA726;
+                padding: 5px;
+                background: #1a1a1a;
+            }
+        """)
