@@ -192,51 +192,72 @@ class CoreWindow(QMainWindow):
         self.move(x, y)
     
     def _draw_robot_frame(self):
-        """Draw the robot frame - simplified version until EPS/SVG is uploaded"""
-        # Try to load EPS or SVG if it exists
-        eps_path = os.path.join("assets", "core_frame.eps")
-        svg_path = os.path.join("assets", "core_frame.svg")
+        """Draw the robot frame - simplified version until image is uploaded"""
+        # Try to load various image formats (check multiple case variations)
+        image_paths = [
+            # PNG (easiest, no dependencies)
+            os.path.join("assets", "Core_Frame.png"),
+            os.path.join("assets", "core_frame.png"),
+            # SVG
+            os.path.join("assets", "Core_Frame.svg"),
+            os.path.join("assets", "core_frame.svg"),
+            # EPS (requires Ghostscript)
+            os.path.join("assets", "Core_Frame.eps"),
+            os.path.join("assets", "core_frame.eps"),
+        ]
         
         pixmap = None
         
-        # Try EPS first
-        if os.path.exists(eps_path):
+        # Try each path
+        for img_path in image_paths:
+            if not os.path.exists(img_path):
+                continue
+                
             try:
-                # Try to load EPS using Pillow and convert to pixmap
-                from PIL import Image
-                img = Image.open(eps_path)
-                img = img.convert("RGBA")
+                if img_path.endswith('.png'):
+                    # Load PNG directly
+                    pixmap = QPixmap(img_path)
+                    if not pixmap.isNull():
+                        pixmap = pixmap.scaled(500, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        logger.info(f"Loaded PNG core frame from {img_path}")
+                        break
                 
-                # Convert PIL Image to QPixmap
-                from io import BytesIO
-                buffer = BytesIO()
-                img.save(buffer, format='PNG')
-                buffer.seek(0)
+                elif img_path.endswith('.svg'):
+                    # Load SVG
+                    renderer = QSvgRenderer(img_path)
+                    pixmap = QPixmap(500, 550)
+                    pixmap.fill(Qt.transparent)
+                    
+                    painter = QPainter(pixmap)
+                    renderer.render(painter)
+                    painter.end()
+                    
+                    logger.info(f"Loaded SVG core frame from {img_path}")
+                    break
                 
-                pixmap = QPixmap()
-                pixmap.loadFromData(buffer.read())
-                pixmap = pixmap.scaled(500, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                
-                logger.info("Loaded EPS core frame")
-            except ImportError:
-                logger.warning("Pillow not installed, cannot load EPS. Install with: pip install pillow")
+                elif img_path.endswith('.eps'):
+                    # Try to load EPS using Pillow (requires Ghostscript)
+                    from PIL import Image
+                    img = Image.open(img_path)
+                    img = img.convert("RGBA")
+                    
+                    # Convert PIL Image to QPixmap
+                    from io import BytesIO
+                    buffer = BytesIO()
+                    img.save(buffer, format='PNG')
+                    buffer.seek(0)
+                    
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(buffer.read())
+                    pixmap = pixmap.scaled(500, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    
+                    logger.info(f"Loaded EPS core frame from {img_path}")
+                    break
+                    
+            except ImportError as e:
+                logger.warning(f"Missing library for {img_path}: {e}")
             except Exception as e:
-                logger.error(f"Failed to load EPS: {e}")
-        
-        # Try SVG as fallback
-        if pixmap is None and os.path.exists(svg_path):
-            try:
-                renderer = QSvgRenderer(svg_path)
-                pixmap = QPixmap(500, 550)
-                pixmap.fill(Qt.transparent)
-                
-                painter = QPainter(pixmap)
-                renderer.render(painter)
-                painter.end()
-                
-                logger.info("Loaded SVG core frame")
-            except Exception as e:
-                logger.error(f"Failed to load SVG: {e}")
+                logger.error(f"Failed to load {img_path}: {e}")
         
         if pixmap:
             self.scene.addPixmap(pixmap)
