@@ -184,3 +184,15 @@ class OpenGLRenderer(QOpenGLWidget):
         # Increase ambient light temporarily
         glow_ambient = [color[0] * intensity, color[1] * intensity, color[2] * intensity, 1.0]
         glLightfv(GL_LIGHT0, GL_AMBIENT, glow_ambient)
+    
+    def set_model_scale(self, scale: float):
+        """Set model scale"""
+        if self.model:
+            self.model.scale = scale
+            logger.debug(f"Model scale set to: {scale}")
+    
+    def set_model_position(self, x: float, y: float, z: float):
+        """Set model position"""
+        if self.model:
+            self.model.position = np.array([x, y, z], dtype=np.float32)
+            logger.debug(f"Model position set to: ({x}, {y}, {z})")
