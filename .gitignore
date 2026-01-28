@@ -1,3 +1,16 @@
+# Ignore all files inside models/ subfolders (keep top-level docs)
+/models/*
+!/models/*.md
+
+# Ignore common model binary formats under models
+/models/**/*.gguf
+/models/**/*.safetensors
+/models/**/*.bin
+/models/**/*.pt
+/models/**/*.zip
+
+# Explicitly ignore the llm folder
+/models/llm/
 # Python
 __pycache__/
 *.py[cod]
