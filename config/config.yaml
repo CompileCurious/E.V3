@@ -145,7 +145,7 @@ ui:
 ipc:
   # Use Windows named pipes
   method: "named_pipe"
-  pipe_name: "\\\\.\\pipe\\E.V3"
+  pipe_name: "\\\\.\\pipe\\E.V3.v2"
   # Buffer size
   buffer_size: 4096
   # Timeout (milliseconds)

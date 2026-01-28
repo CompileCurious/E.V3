@@ -149,6 +149,10 @@ class EV3UIApplication:
         
         logger.info(f"LLM response: {message}")
         
+        # Display message in window
+        if self.window:
+            self.window.show_message(message)
+        
         # Show message
         self.window.show_message(message)
     

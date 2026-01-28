@@ -339,8 +339,24 @@ Keep responses concise (1-2 sentences) unless more detail is needed."""
         Interpret system event using local LLM
         Privacy: Always use local LLM for system events
         """
-        if not self.local_llm:
-            return "Event monitoring active"
+        # Fallback friendly messages when LLM not available
+        if not self.local_llm or not self.local_llm.model:
+            source = event_data.get('source', 'System')
+            event_id = event_data.get('event_id', '')
+            category = event_data.get('category', 'event')
+            
+            # Generate friendly message based on common event patterns
+            if 'defender' in source.lower() or 'antimalware' in source.lower():
+                if event_id in [1116, 1117]:
+                    return "✓ Virus scan complete — all good!"
+                elif event_id in [5001, 5012]:
+                    return "⚠️ Security alert detected. Check details for more info."
+                else:
+                    return f"Windows Defender event (ID: {event_id})"
+            elif 'firewall' in source.lower():
+                return f"Firewall activity detected (ID: {event_id})"
+            else:
+                return f"System {category} detected"
         
         # Create prompt for event interpretation
         prompt = f"""Interpret this system event in a friendly, concise way (1 sentence):

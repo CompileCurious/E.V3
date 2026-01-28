@@ -67,6 +67,7 @@ class IPCServer:
     
     def _run_server(self):
         """Main server loop"""
+        import time
         while self.running:
             try:
                 # Create named pipe
@@ -74,7 +75,7 @@ class IPCServer:
                     self.pipe_name,
                     win32pipe.PIPE_ACCESS_DUPLEX,
                     win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
-                    1,  # Max instances
+                    5,  # Max instances (increased to avoid "all instances busy")
                     self.buffer_size,
                     self.buffer_size,
                     0,  # Default timeout
@@ -93,9 +94,12 @@ class IPCServer:
             except pywintypes.error as e:
                 if self.running:
                     logger.error(f"Pipe error: {e}")
+                    # Wait before retry to avoid tight loop on persistent errors
+                    time.sleep(2.0)
             except Exception as e:
                 if self.running:
                     logger.error(f"Server error: {e}")
+                    time.sleep(2.0)
             finally:
                 if self.pipe_handle:
                     try:
