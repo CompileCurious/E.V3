@@ -24,9 +24,9 @@ class ClickableRegion(QGraphicsEllipseItem):
         self.parent_window = parent_window
         self.is_hovered = False
         
-        # Make it invisible by default
-        self.setPen(QPen(Qt.transparent))
-        self.setBrush(QBrush(Qt.transparent))
+        # Make regions visible for positioning
+        self.setPen(QPen(QColor(255, 100, 100, 100), 2))
+        self.setBrush(QBrush(QColor(255, 100, 100, 50)))
         
         # Enable hover events
         self.setAcceptHoverEvents(True)
@@ -37,12 +37,14 @@ class ClickableRegion(QGraphicsEllipseItem):
         self.is_hovered = True
         
         # Show glow effect
-        glow_color = QColor(100, 200, 255, 100)
+        glow_color = QColor(100, 200, 255, 150)
         self.setPen(QPen(glow_color, 3))
         self.setBrush(QBrush(glow_color))
         
-        # Show tooltip
-        self.setToolTip(self.tooltip_text)
+        # Show tooltip with position info
+        rect = self.rect()
+        pos_info = f"\n[Position: x={int(rect.x())}, y={int(rect.y())}, w={int(rect.width())}, h={int(rect.height())}]"
+        self.setToolTip(self.tooltip_text + pos_info)
         
         super().hoverEnterEvent(event)
     
@@ -50,9 +52,9 @@ class ClickableRegion(QGraphicsEllipseItem):
         """Handle hover leave - remove glow"""
         self.is_hovered = False
         
-        # Remove glow
-        self.setPen(QPen(Qt.transparent))
-        self.setBrush(QBrush(Qt.transparent))
+        # Return to subtle visible state
+        self.setPen(QPen(QColor(255, 100, 100, 100), 2))
+        self.setBrush(QBrush(QColor(255, 100, 100, 50)))
         
         super().hoverLeaveEvent(event)
     
@@ -112,7 +114,7 @@ class CoreWindow(QMainWindow):
         super().__init__(parent)
         
         self.setWindowTitle("E.V3 Core Configuration")
-        self.setFixedSize(600, 700)
+        self.setFixedSize(650, 800)
         
         # Setup UI
         self._setup_ui()
@@ -218,14 +220,21 @@ class CoreWindow(QMainWindow):
                     # Load PNG directly
                     pixmap = QPixmap(img_path)
                     if not pixmap.isNull():
-                        pixmap = pixmap.scaled(500, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                        logger.info(f"Loaded PNG core frame from {img_path}")
+                        # Get original size and scale up significantly
+                        original_width = pixmap.width()
+                        original_height = pixmap.height()
+                        # Scale to at least 600px wide while maintaining aspect ratio
+                        scale_factor = max(600.0 / original_width, 700.0 / original_height)
+                        new_width = int(original_width * scale_factor)
+                        new_height = int(original_height * scale_factor)
+                        pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        logger.info(f"Loaded PNG core frame from {img_path}, scaled from {original_width}x{original_height} to {new_width}x{new_height}")
                         break
                 
                 elif img_path.endswith('.svg'):
                     # Load SVG
                     renderer = QSvgRenderer(img_path)
-                    pixmap = QPixmap(500, 550)
+                    pixmap = QPixmap(600, 700)
                     pixmap.fill(Qt.transparent)
                     
                     painter = QPainter(pixmap)
@@ -249,7 +258,13 @@ class CoreWindow(QMainWindow):
                     
                     pixmap = QPixmap()
                     pixmap.loadFromData(buffer.read())
-                    pixmap = pixmap.scaled(500, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    # Scale larger
+                    original_width = pixmap.width()
+                    original_height = pixmap.height()
+                    scale_factor = max(600.0 / original_width, 700.0 / original_height)
+                    new_width = int(original_width * scale_factor)
+                    new_height = int(original_height * scale_factor)
+                    pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     
                     logger.info(f"Loaded EPS core frame from {img_path}")
                     break
