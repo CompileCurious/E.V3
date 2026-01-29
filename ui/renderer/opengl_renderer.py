@@ -4,7 +4,7 @@ Renders 3D character model with animations
 """
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, QPoint
 from PySide6.QtGui import QSurfaceFormat
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -30,6 +30,12 @@ class OpenGLRenderer(QOpenGLWidget):
         self.camera_distance = 3.0
         self.camera_angle_x = 0.0
         self.camera_angle_y = 0.0
+        self.camera_pan_x = 0.0
+        self.camera_pan_y = 0.0
+        
+        # Mouse interaction (Blender-style)
+        self.last_mouse_pos = None
+        self.mouse_button = None
         
         # Animation
         self.animation_time = 0.0
@@ -107,8 +113,8 @@ class OpenGLRenderer(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         
-        # Setup camera
-        glTranslatef(0.0, 0.0, -self.camera_distance)
+        # Setup camera with pan support
+        glTranslatef(self.camera_pan_x, self.camera_pan_y, -self.camera_distance)
         glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
         glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
         
@@ -196,3 +202,48 @@ class OpenGLRenderer(QOpenGLWidget):
         if self.model:
             self.model.position = np.array([x, y, z], dtype=np.float32)
             logger.debug(f"Model position set to: ({x}, {y}, {z})")
+    
+    def mousePressEvent(self, event):
+        """Handle mouse press for Blender-style controls"""
+        self.last_mouse_pos = event.position().toPoint()
+        self.mouse_button = event.button()
+        event.accept()
+    
+    def mouseMoveEvent(self, event):
+        """Handle mouse move for camera control"""
+        if self.last_mouse_pos is None:
+            return
+        
+        current_pos = event.position().toPoint()
+        delta = current_pos - self.last_mouse_pos
+        
+        if self.mouse_button == Qt.LeftButton:
+            # Rotate camera (Blender style)
+            self.camera_angle_y += delta.x() * 0.5
+            self.camera_angle_x += delta.y() * 0.5
+            self.camera_angle_x = max(-89, min(89, self.camera_angle_x))
+            
+        elif self.mouse_button == Qt.MiddleButton:
+            # Pan camera (Blender style)
+            sensitivity = 0.01
+            self.camera_pan_x += delta.x() * sensitivity
+            self.camera_pan_y -= delta.y() * sensitivity
+        
+        self.last_mouse_pos = current_pos
+        self.update()
+        event.accept()
+    
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release"""
+        self.last_mouse_pos = None
+        self.mouse_button = None
+        event.accept()
+    
+    def wheelEvent(self, event):
+        """Handle mouse wheel for zoom (Blender style)"""
+        delta = event.angleDelta().y()
+        zoom_speed = 0.001
+        self.camera_distance -= delta * zoom_speed
+        self.camera_distance = max(1.0, min(10.0, self.camera_distance))
+        self.update()
+        event.accept()

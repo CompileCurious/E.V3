@@ -74,11 +74,15 @@ class CompanionWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
         
-        # Window size
+        # Window size - smaller and locked
         ui_config = self.config.get("ui", {}).get("window", {})
-        width = ui_config.get("width", 400)
-        height = ui_config.get("height", 600)
+        width = ui_config.get("width", 300)
+        height = ui_config.get("height", 450)
         self.setFixedSize(width, height)
+        
+        # Lock window in place (disable dragging by default)
+        self.window_locked = True
+        self.manipulate_mode = False
         
         # Don't set window opacity - we want full opacity for the window
         # Transparency is handled by OpenGL rendering
@@ -240,6 +244,14 @@ class CompanionWindow(QMainWindow):
         hotkey_menu.addAction(hotkey_info_action)
         
         shell_menu.addMenu(hotkey_menu)
+        
+        shell_menu.addSeparator()
+        
+        # Manipulate Mode toggle
+        self.manipulate_action = QAction("Manipulate Model", self, checkable=True)
+        self.manipulate_action.setChecked(False)
+        self.manipulate_action.triggered.connect(self.toggle_manipulate_mode)
+        shell_menu.addAction(self.manipulate_action)
         
         shell_menu.addSeparator()
         
@@ -919,6 +931,22 @@ class CompanionWindow(QMainWindow):
         """Hide text message"""
         self.message_label.hide()
     
+    def toggle_manipulate_mode(self):
+        \"\"\"Toggle model manipulation mode\"\"\"
+        self.manipulate_mode = not self.manipulate_mode
+        self.manipulate_action.setChecked(self.manipulate_mode)
+        
+        if self.manipulate_mode:
+            logger.info("Manipulate mode enabled - use mouse to rotate/pan/zoom model")
+            self.tray_icon.showMessage(
+                "Manipulate Mode",
+                "Left drag: Rotate | Middle drag: Pan | Scroll: Zoom",
+                QSystemTrayIcon.Information,
+                3000
+            )
+        else:
+            logger.info("Manipulate mode disabled")
+    
     def enable_interaction(self):
         """Enable window interaction (disable click-through)"""
         if self.is_click_through:
@@ -940,17 +968,31 @@ class CompanionWindow(QMainWindow):
             logger.debug("Click-through enabled")
     
     def mousePressEvent(self, event):
-        """Handle mouse press (for dragging window)"""
-        if event.button() == Qt.LeftButton and not self.is_click_through:
+        """Handle mouse press (for dragging window or model manipulation)"""
+        if self.manipulate_mode:
+            # Forward to renderer for model manipulation
+            self.renderer.mousePressEvent(event)
+            event.accept()
+        elif event.button() == Qt.LeftButton and not self.is_click_through and not self.window_locked:
             self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             event.accept()
     
     def mouseMoveEvent(self, event):
-        """Handle mouse move (drag window)"""
-        if event.buttons() == Qt.LeftButton and not self.is_click_through:
+        """Handle mouse move (drag window or model manipulation)"""
+        if self.manipulate_mode:
+            # Forward to renderer for model manipulation
+            self.renderer.mouseMoveEvent(event)
+            event.accept()
+        elif event.buttons() == Qt.LeftButton and not self.is_click_through and not self.window_locked:
             if hasattr(self, 'drag_position'):
                 self.move(event.globalPosition().toPoint() - self.drag_position)
                 event.accept()
+    
+    def wheelEvent(self, event):
+        """Handle mouse wheel (zoom in manipulate mode)"""
+        if self.manipulate_mode:
+            self.renderer.wheelEvent(event)
+            event.accept()
     
     def mouseDoubleClickEvent(self, event):
         """Handle double-click (dismiss or interact)"""
@@ -1065,8 +1107,20 @@ class CompanionWindow(QMainWindow):
     
     def display_chat_response(self, response: str):
         """Display LLM response in chat window"""
-        if self.chat_window and self.chat_window.isVisible():
+        from loguru import logger
+        logger.info(f"display_chat_response called, chat_window exists: {self.chat_window is not None}")
+        if self.chat_window:
+            logger.info(f"Chat window visible: {self.chat_window.isVisible()}")
+            # Show window if hidden (response arrived after user closed window)
+            if not self.chat_window.isVisible():
+                logger.info("Showing hidden chat window")
+                self.chat_window.show()
+                self.chat_window.activateWindow()
+            logger.info("Calling chat_window.display_response")
             self.chat_window.display_response(response)
+            logger.info("display_response completed")
+        else:
+            logger.warning("No chat_window to display response")
 
 
 class ChatWindow(QDialog):
@@ -1219,13 +1273,20 @@ class ChatWindow(QDialog):
     
     def display_response(self, response: str):
         """Display LLM response"""
+        from loguru import logger
+        logger.info(f"ChatWindow.display_response called with response length: {len(response)}")
+        logger.info(f"Current chat_messages count: {len(self.chat_messages)}")
+        
         # Remove "thinking" indicator
         if self.chat_messages and "thinking" in self.chat_messages[-1]:
+            logger.info("Removing 'thinking' indicator")
             self.chat_messages.pop()
         
         # Add response
         self.chat_messages.append(f"<b style='color: #3a7bd5;'>E.V3:</b> {response}")
+        logger.info("Response added to chat_messages, calling _update_history")
         self._update_history()
+        logger.info("_update_history completed")
     
     def _update_history(self):
         """Update chat history display"""

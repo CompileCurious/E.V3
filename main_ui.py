@@ -10,7 +10,7 @@ import win32api
 from winerror import ERROR_ALREADY_EXISTS
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Signal, QObject
 from loguru import logger
 
 from ui.window import CompanionWindow
@@ -30,15 +30,18 @@ def check_single_instance():
     return mutex  # Return the mutex handle to keep it alive
 
 
-class EV3UIApplication:
+class EV3UIApplication(QObject):
     """
     Main UI application
     - Displays 3D companion window
     - Connects to background kernel via IPC
     - Updates UI based on kernel state
     """
+    # Signal to safely deliver LLM responses from IPC thread to UI thread
+    llm_response_signal = Signal(str)
     
     def __init__(self, config_path: str = "config/config.yaml"):
+        super().__init__()
         self.config = self._load_config(config_path)
         
         # Setup logging
@@ -93,6 +96,9 @@ class EV3UIApplication:
         
         # Create main window
         self.window = CompanionWindow(self.config)
+        
+        # Connect the signal to deliver LLM responses
+        self.llm_response_signal.connect(self._deliver_llm_response)
         
         # Connect chat message signal
         if hasattr(self.window, 'send_chat_message'):
@@ -165,25 +171,29 @@ class EV3UIApplication:
         self.window.set_state(state, message, priority)
     
     def _handle_llm_response(self, data):
-        """Handle LLM response from service"""
+        """Handle LLM response from service (called from IPC thread)"""
         message = data.get("message", "")
         
         logger.info(f"LLM response received: {message[:100]}...")
+        logger.info(f"Window object: {self.window}, has chat_window: {hasattr(self.window, 'chat_window') if self.window else False}")
         
-        # Dispatch UI update onto the Qt main thread to avoid crashes
-        from PySide6.QtCore import QTimer
-
-        def _deliver():
-            try:
-                if self.window:
-                    logger.info("Forwarding response to chat window")
-                    self.window.display_chat_response(message)
-                else:
-                    logger.warning("No window available to display response")
-            except Exception as e:
-                logger.error(f"Error delivering LLM response to UI: {e}", exc_info=True)
-
-        QTimer.singleShot(0, _deliver)
+        # Emit signal to deliver response on UI thread
+        logger.info("Emitting llm_response_signal")
+        self.llm_response_signal.emit(message)
+        logger.info("Signal emitted")
+    
+    def _deliver_llm_response(self, message: str):
+        """Deliver LLM response to UI (runs on UI thread via signal)"""
+        logger.info("_deliver_llm_response called on UI thread")
+        try:
+            if self.window:
+                logger.info(f"Calling display_chat_response with message length: {len(message)}")
+                self.window.display_chat_response(message)
+                logger.info("display_chat_response completed")
+            else:
+                logger.warning("No window available to display response")
+        except Exception as e:
+            logger.error(f"Error delivering LLM response to UI: {e}", exc_info=True)
     
     def _send_message_via_ipc(self, message: str):
         """Send user message to kernel via IPC"""
