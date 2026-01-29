@@ -128,15 +128,20 @@ class OpenGLRenderer(QOpenGLWidget):
         """Load 3D character model"""
         model_path = self.config.get("ui", {}).get("model", {}).get("model_path", "")
         
+        logger.info(f"Loading model with path: '{model_path}'")
+        
         if not model_path:
             logger.warning("No model path specified, using simple character")
             self.model = ModelLoader.create_simple_character()
             return
         
         # Try to load model
+        logger.info(f"Attempting to load model from: {model_path}")
         if model_path.endswith('.vrm'):
+            logger.info("Detected VRM format")
             self.model = ModelLoader.load_vrm(model_path)
         elif model_path.endswith(('.gltf', '.glb')):
+            logger.info("Detected GLTF/GLB format")
             self.model = ModelLoader.load_gltf(model_path)
         else:
             logger.warning(f"Unsupported model format: {model_path}")

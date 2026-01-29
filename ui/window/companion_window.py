@@ -932,7 +932,7 @@ class CompanionWindow(QMainWindow):
         self.message_label.hide()
     
     def toggle_manipulate_mode(self):
-        \"\"\"Toggle model manipulation mode\"\"\"
+        """Toggle model manipulation mode"""
         self.manipulate_mode = not self.manipulate_mode
         self.manipulate_action.setChecked(self.manipulate_mode)
         

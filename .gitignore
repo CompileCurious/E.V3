@@ -9,6 +9,18 @@
 /models/**/*.pt
 /models/**/*.zip
 
+# Ignore character models (too large for git)
+/models/character/*.vrm
+/models/character/*.glb
+/models/character/*.gltf
+
+# Ignore speech model files
+/models/speech/**/*.onnx
+/models/speech/**/*.pth
+/models/speech/**/*.wav
+/models/speech/**/*.mp3
+/models/speech/**/*.ogg
+
 # Explicitly ignore the llm folder
 /models/llm/
 # Python

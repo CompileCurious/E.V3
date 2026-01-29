@@ -114,7 +114,7 @@ ui:
   
   model:
     # Path to 3D model (leave empty to use simple test character)
-    model_path: ""
+    model_path: "models/character/E.V3.vrm"
     # Scale
     scale: 1.0
     # Initial rotation
@@ -145,6 +145,17 @@ ui:
   hotkey:
     enabled: true
     combination: "win+c"  # Default: Windows key + C
+
+# Speech/TTS settings
+speech:
+  # Active voicepack (folder name in models/speech/)
+  active_voicepack: "piper_english"
+  # Scan for voicepacks on startup
+  scan_on_startup: true
+  # Enable hot-swapping (automatically reload changed voicepacks)
+  auto_reload: true
+  # Check for changes interval (seconds)
+  reload_check_interval: 10
 
 # IPC settings
 ipc:

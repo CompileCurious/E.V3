@@ -107,7 +107,7 @@ class EV3Shell:
     def _retry_connect(self):
         while self.running and not self.ipc.connected:
             time.sleep(2)
-                if self.ipc.connect(timeout_ms=2000):
+            if self.ipc.connect(timeout_ms=2000):
                 logger.info("Connected to kernel (retry)")
                 break
 

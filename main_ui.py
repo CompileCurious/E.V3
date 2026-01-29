@@ -14,6 +14,7 @@ from PySide6.QtCore import QTimer, Signal, QObject
 from loguru import logger
 
 from ui.window import CompanionWindow
+from ui.speech import SpeechManager
 from ipc import IPCClient
 
 
@@ -58,6 +59,9 @@ class EV3UIApplication(QObject):
         # IPC client
         self.ipc_client: IPCClient = None
         
+        # Speech manager
+        self.speech_manager: SpeechManager = None
+        
         logger.info("E.V3 UI Application initialized")
     
     def _load_config(self, config_path: str):
@@ -94,6 +98,9 @@ class EV3UIApplication(QObject):
         """Initialize UI components"""
         logger.info("Initializing UI...")
         
+        # Initialize speech manager
+        self.speech_manager = SpeechManager(self.config)
+        
         # Create main window
         self.window = CompanionWindow(self.config)
         
@@ -112,6 +119,7 @@ class EV3UIApplication(QObject):
             buffer_size=ipc_config.get("buffer_size", 4096)
         )
         
+        self.ipc_client.register_handler("speak", self._handle_speak)
         # Register IPC handlers
         self.ipc_client.register_handler("state_update", self._handle_state_update)
         self.ipc_client.register_handler("llm_response", self._handle_llm_response)
@@ -202,6 +210,42 @@ class EV3UIApplication(QObject):
             self.ipc_client.send_message("user_message", {"message": message})
         else:
             logger.warning("IPC client not connected")
+    
+    def _handle_speak(self, data):
+        """
+        Handle speech request from kernel
+        
+        Expected data format:
+        {
+            "text": "Hello, how are you?",
+            "emotion": "happy",  # optional
+            "blocking": false    # optional
+        }
+        """
+        text = data.get("text", "")
+        emotion = data.get("emotion", "neutral")
+        blocking = data.get("blocking", False)
+        
+        if not text:
+            logger.warning("Received speak message with no text")
+            return
+        
+        logger.info(f"Speak request: '{text}' [emotion: {emotion}]")
+        
+        # Generate and play speech
+        if self.speech_manager:
+            result = self.speech_manager.speak(text, emotion, blocking)
+            
+            if result:
+                # Update animation system with phoneme data
+                if hasattr(self.window, 'sync_speech_animation'):
+                    self.window.sync_speech_animation(result)
+                
+                logger.debug(f"Speech playback initiated: {result.get('duration', 0):.2f}s")
+            else:
+                logger.warning("Speech generation failed")
+        else:
+            logger.warning("Speech manager not initialized")
     
     def send_user_message(self, message: str):
         """Send user message to service"""

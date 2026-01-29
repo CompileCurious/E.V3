@@ -45,9 +45,15 @@ python-dotenv>=1.0.0
 # Logging and monitoring
 loguru>=0.7.0
 
-# Audio (optional, for voice/sound effects)
-sounddevice>=0.4.6
+# Audio (for speech playback)
+pygame>=2.5.0  # Audio playback
+sounddevice>=0.4.6  # Alternative audio backend
 soundfile>=0.12.1
+
+# TTS engines (optional - install as needed)
+# piper-tts>=1.2.0  # Lightweight neural TTS (recommended)
+# TTS>=0.20.0  # Coqui TTS (more advanced, larger)
+# pyttsx3>=2.90  # Basic TTS fallback
 
 # Global hotkey support
 keyboard>=0.13.5

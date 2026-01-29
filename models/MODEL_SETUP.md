@@ -101,9 +101,241 @@ For best animation support, include these shape keys:
 - Sketchfab: https://sketchfab.com/ (filter: Downloadable, GLTF/GLB)
 - Mixamo: https://www.mixamo.com/ (free rigged characters)
 
+## Speech/Voice Setup
+
+E.V3 supports local text-to-speech with hot-swappable voicepacks. No cloud APIs required.
+
+### Voicepack Types
+
+**Neural TTS:**
+- Lightweight TTS models (Piper, Coqui TTS, etc.)
+- Real-time generation
+- Flexible and natural-sounding
+
+**Sample-Based:**
+- Pre-recorded audio clips
+- Instant playback
+- Best for specific phrases or character catchphrases
+
+**Hybrid:**
+- Combines both approaches
+- Uses samples when available, TTS for everything else
+
+### Setting Up Voicepacks
+
+1. Create a folder in `models/speech/`:
+   ```
+   models/speech/my_voicepack/
+   ```
+
+2. Add a `config.json` file (see schema below)
+
+3. Add your TTS model files OR audio samples
+
+4. Voicepack is automatically detected and hot-swappable!
+
+### Quick Start: Piper TTS (Recommended)
+
+1. Download a Piper voice from: https://github.com/rhasspy/piper/releases
+   - Choose a language and voice
+   - Download both `.onnx` model and `.json` config
+
+2. Create voicepack structure:
+   ```
+   models/speech/piper_english/
+   ├── config.json
+   ├── en_US-lessac-medium.onnx
+   └── en_US-lessac-medium.onnx.json
+   ```
+
+3. Create `config.json`:
+   ```json
+   {
+     "name": "Piper English",
+     "version": "1.0.0",
+     "type": "neural",
+     "neural": {
+       "engine": "piper",
+       "model_path": "en_US-lessac-medium.onnx",
+       "config_path": "en_US-lessac-medium.onnx.json",
+       "sample_rate": 22050
+     },
+     "parameters": {
+       "pitch": 1.0,
+       "speed": 1.0,
+       "volume": 1.0
+     },
+     "emotion_map": {
+       "happy": { "pitch": 1.2, "speed": 1.1 },
+       "sad": { "pitch": 0.9, "speed": 0.85 },
+       "calm": { "pitch": 1.0, "speed": 0.9 }
+     }
+   }
+   ```
+
+### Creating a Sample-Based Voicepack
+
+1. Record or collect audio files (WAV format recommended)
+
+2. Organize in a folder structure:
+   ```
+   models/speech/sample_voice/
+   ├── config.json
+   └── samples/
+       ├── greetings/
+       │   ├── hello.wav
+       │   ├── good_morning.wav
+       │   └── good_evening.wav
+       ├── farewells/
+       │   └── goodbye.wav
+       └── emotions/
+           ├── happy_laugh.wav
+           └── sad_sigh.wav
+   ```
+
+3. Create `config.json`:
+   ```json
+   {
+     "name": "Sample Voice",
+     "version": "1.0.0",
+     "type": "samples",
+     "samples": {
+       "folder": "samples",
+       "format": "wav",
+       "mapping": {
+         "hello": "greetings/hello.wav",
+         "good morning": "greetings/good_morning.wav",
+         "good evening": "greetings/good_evening.wav",
+         "goodbye": "farewells/goodbye.wav"
+       }
+     },
+     "parameters": {
+       "volume": 1.0
+     },
+     "fallback": {
+       "behavior": "text_only"
+     }
+   }
+   ```
+
+### Voicepack Config Schema
+
+Full schema available at: `models/speech/voicepack_schema.json`
+
+**Required Fields:**
+- `name` - Display name
+- `version` - Semantic version (e.g., "1.0.0")
+- `type` - "neural", "samples", or "hybrid"
+- `neural` - TTS model config (if type is neural/hybrid)
+  - `engine` - "piper", "coqui", "espeak", "custom"
+  - `model_path` - Path to model file
+- `samples` - Sample config (if type is samples/hybrid)
+  - `folder` - Folder containing audio files
+  - `mapping` - Text-to-file mapping (optional)
+
+**Optional Fields:**
+- `parameters` - pitch, speed, volume, energy
+- `emotion_map` - Adjust parameters per emotion
+- `filters` - reverb, eq, compressor
+- `fallback` - Behavior when generation fails
+- `animation_sync` - Lip-sync settings
+- `metadata` - language, gender, age, tags
+
+### Selecting Active Voicepack
+
+In `config/config.yaml`:
+```yaml
+speech:
+  active_voicepack: "piper_english"  # Name of folder in models/speech/
+  scan_on_startup: true
+  auto_reload: true  # Hot-swap support
+```
+
+### Free TTS Resources
+
+**Piper TTS Models:**
+- https://github.com/rhasspy/piper/releases
+- High quality, fast, lightweight
+- Many languages available
+
+**Coqui TTS Models:**
+- https://github.com/coqui-ai/TTS
+- Install: `pip install TTS`
+- Download models via CLI
+
+**Sample Sources:**
+- Record your own with Audacity (free)
+- Generate with online TTS, then download
+- Voice actor recordings
+
+### Advanced: Audio Filters
+
+Apply post-processing to generated speech:
+
+```json
+{
+  "filters": {
+    "reverb": {
+      "enabled": true,
+      "room_size": 0.3,
+      "damping": 0.5
+    },
+    "eq": {
+      "enabled": true,
+      "low": 2.0,
+      "mid": 0.0,
+      "high": -1.0
+    },
+    "compressor": {
+      "enabled": true,
+      "threshold": -20.0,
+      "ratio": 4.0
+    }
+  }
+}
+```
+
+### Emotion Mapping
+
+Automatically adjust voice parameters based on emotion:
+
+```json
+{
+  "emotion_map": {
+    "happy": {
+      "pitch": 1.2,
+      "speed": 1.1,
+      "energy": 1.3
+    },
+    "sad": {
+      "pitch": 0.9,
+      "speed": 0.85,
+      "energy": 0.7
+    },
+    "angry": {
+      "pitch": 0.95,
+      "speed": 1.15,
+      "energy": 1.5
+    },
+    "calm": {
+      "pitch": 1.0,
+      "speed": 0.9,
+      "energy": 0.9
+    },
+    "excited": {
+      "pitch": 1.3,
+      "speed": 1.2,
+      "energy": 1.4
+    }
+  }
+}
+```
+
 ## Testing Without Models
 
 E.V3 includes a simple built-in character for testing. If no model is found, it will automatically use a basic geometric character.
+
+For speech, E.V3 will fall back to text-only display if no voicepacks are configured.
 
 ## Model Configuration
 

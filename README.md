@@ -8,8 +8,7 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 - **Microkernel Architecture**: Modular design with permission boundaries and event-based communication
 -- **Native Windows Kernel**: Runs in background, monitors system events
 -- **Interactive Shell**: System tray control with Show/Hide, Stop Kernel, Exit menu
-- **3D Animated Character**: VRoid/Blender models with bone animations and blendshapes
-- **Local LLM**: Mistral 7B quantized for personality and event interpretation
+- **3D Animated Character**: VRoid/Blender models with bone animations and blendshapes- **Local Text-to-Speech**: Hot-swappable voicepacks, neural TTS and sample-based audio- **Local LLM**: Mistral 7B quantized for personality and event interpretation
 - **Optional External LLM**: GPT mini API only when explicitly requested
 - **Event Monitoring**: Windows Defender, Firewall, System notifications
 - **Calendar Integration**: Surface reminders from your calendar
@@ -134,6 +133,11 @@ pip install -r requirements.txt
    - Add your own VRoid (.vrm) or Blender (.glb/.gltf) model
    - Place in `models/character/` directory
    - Update `config/config.yaml` with model path
+
+3. **Voice/Speech Model** (Optional):
+   - Download Piper TTS voice from: https://github.com/rhasspy/piper/releases
+   - Place model files in `models/speech/piper_english/`
+   - See [models/MODEL_SETUP.md](models/MODEL_SETUP.md) for details
 
 ## Usage
 
@@ -292,7 +296,9 @@ See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
 ## Documentation
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Microkernel design, modules, event flows
-- **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - LLM and 3D model setup
+- **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - LLM, 3D models, and speech setup
+- **[docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md)** - Complete speech/TTS documentation
+- **[SPEECH_IMPLEMENTATION.md](SPEECH_IMPLEMENTATION.md)** - Speech system implementation summary
 - **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building executables
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development workflow
 - **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - User guide

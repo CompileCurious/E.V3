@@ -198,27 +198,57 @@ class ModelLoader:
         This is a simplified loader - production should use pygltflib or similar
         """
         try:
+            import os
+            if not os.path.exists(filepath):
+                logger.error(f"Model file not found: {filepath}")
+                return None
+            
             from pygltflib import GLTF2
             
-            gltf = GLTF2().load(filepath)
+            logger.info(f"Loading GLTF/GLB/VRM model: {filepath}")
+            
+            # VRM files are GLB format (binary GLTF) with VRM extensions
+            # Read the file in binary mode first, then let pygltflib parse it
+            try:
+                with open(filepath, 'rb') as f:
+                    file_content = f.read()
+                
+                # Check if it's binary GLB format (starts with glTF magic number)
+                if file_content[:4] == b'glTF':
+                    logger.info("Detected binary GLB/VRM format")
+                    gltf = GLTF2.load_from_bytes(file_content)
+                else:
+                    logger.info("Detected JSON GLTF format")
+                    gltf = GLTF2.load(filepath)
+                
+                logger.info("Successfully loaded GLTF model")
+            except Exception as e:
+                logger.error(f"Failed to parse GLTF data: {e}")
+                # Fallback to direct file load
+                gltf = GLTF2.load(filepath)
+            
             model = Model3D()
             
-            logger.info(f"Loading GLTF model: {filepath}")
             logger.info(f"Meshes: {len(gltf.meshes)}, Nodes: {len(gltf.nodes)}")
             
-            # Load meshes (simplified)
+            # Load meshes (simplified - using placeholder for now)
+            # TODO: Properly parse GLTF accessors, buffer views, and buffers
+            mesh_count = 0
             for gltf_mesh in gltf.meshes:
                 for primitive in gltf_mesh.primitives:
                     mesh = Mesh()
                     
-                    # Get vertex data
-                    # Note: This is simplified - proper implementation needed
-                    # for production use with proper accessor/buffer handling
+                    # TEMPORARY: Use placeholder cube until proper GLTF parsing is implemented
+                    # Real implementation needs to:
+                    # 1. Get accessor from primitive.attributes['POSITION']
+                    # 2. Get buffer view from accessor
+                    # 3. Extract binary data from gltf.buffers
+                    # 4. Decode based on accessor type/componentType
                     
                     mesh.vertices = np.array([
-                        # Placeholder vertices for a simple cube
-                        -1, -1, -1,  1, -1, -1,  1,  1, -1, -1,  1, -1,
-                        -1, -1,  1,  1, -1,  1,  1,  1,  1, -1,  1,  1
+                        # Placeholder cube vertices
+                        -0.5, -0.5, -0.5,  0.5, -0.5, -0.5,  0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
+                        -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,  0.5,  0.5, -0.5,  0.5,  0.5
                     ], dtype=np.float32)
                     
                     mesh.indices = np.array([
@@ -227,8 +257,13 @@ class ModelLoader:
                     ], dtype=np.uint32)
                     
                     model.add_mesh(mesh)
+                    mesh_count += 1
             
-            return model
+            logger.warning(f"VRM loaded with {mesh_count} placeholder meshes. Actual vertex data parsing not yet implemented.")
+            logger.info("Falling back to simple character until GLTF buffer parsing is added.")
+            
+            # For now, return simple character instead of placeholder
+            return ModelLoader.create_simple_character()
             
         except ImportError:
             logger.error("pygltflib not installed. Install with: pip install pygltflib")
