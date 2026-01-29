@@ -1,5 +1,5 @@
 """
-Core Configuration Window
+Modules Configuration Window
 Interactive robot frame for selecting models and components
 """
 
@@ -63,9 +63,9 @@ class ClickableRegion(QGraphicsEllipseItem):
         super().mousePressEvent(event)
 
 
-class CoreWindow(QMainWindow):
+class ModulesWindow(QMainWindow):
     """
-    Core configuration window with interactive robot frame
+    Modules configuration window with interactive robot frame
     """
     
     # Component definitions: (x, y, width, height, type, tooltip, folder)
@@ -102,7 +102,7 @@ class CoreWindow(QMainWindow):
         },
         "chest": {
             "rect": (410, 430, 100, 90),
-            "tooltip": "💾 Core / Settings\nClick to configure core system settings",
+            "tooltip": "💾 Modules / Settings\nClick to configure modules system settings",
             "folder": "config",
             "filter": "Config Files (*.yaml *.json);;All Files (*.*)"
         }
@@ -111,7 +111,7 @@ class CoreWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        self.setWindowTitle("E.V3 Core Configuration")
+        self.setWindowTitle("E.V3 Modules Configuration")
         self.setFixedSize(500, 650)
         
         # Setup UI
@@ -120,7 +120,7 @@ class CoreWindow(QMainWindow):
         # Center window
         self._center_window()
         
-        logger.info("Core window initialized")
+        logger.info("Modules window initialized")
     
     def _setup_ui(self):
         """Setup the UI"""
@@ -131,7 +131,7 @@ class CoreWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         
         # Title
-        title = QLabel("E.V3 Core Configuration")
+        title = QLabel("E.V3 Modules Configuration")
         title.setStyleSheet("""
             QLabel {
                 font-size: 24px;
@@ -175,7 +175,7 @@ class CoreWindow(QMainWindow):
         terminal_layout = QHBoxLayout(terminal_widget)
         terminal_layout.setContentsMargins(10, 5, 10, 5)
         
-        self.commit_label = QLabel("commit_to_core? (Y/N)")
+        self.commit_label = QLabel("commit_to_modules? (Y/N)")
         self.commit_label.setStyleSheet("""
             QLabel {
                 font-family: 'Consolas', 'Courier New', monospace;
@@ -255,7 +255,7 @@ class CoreWindow(QMainWindow):
                     if not pixmap.isNull():
                         # Scale to a reasonable size
                         pixmap = pixmap.scaled(480, 580, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                        logger.info(f"Loaded PNG core frame from {img_path}")
+                            logger.info(f"Loaded PNG modules frame from {img_path}")
                         break
                 
                 elif img_path.endswith('.svg'):
@@ -268,7 +268,7 @@ class CoreWindow(QMainWindow):
                     renderer.render(painter)
                     painter.end()
                     
-                    logger.info(f"Loaded SVG core frame from {img_path}")
+                    logger.info(f"Loaded SVG modules frame from {img_path}")
                     break
                 
                 elif img_path.endswith('.eps'):
@@ -288,7 +288,7 @@ class CoreWindow(QMainWindow):
                     # Scale to reasonable size
                     pixmap = pixmap.scaled(480, 580, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     
-                    logger.info(f"Loaded EPS core frame from {img_path}")
+                    logger.info(f"Loaded EPS modules frame from {img_path}")
                     break
                     
             except ImportError as e:
@@ -404,7 +404,7 @@ class CoreWindow(QMainWindow):
                 
                 # Reset after 2 seconds
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
                 QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
                     QLabel {
                         font-family: 'Consolas', 'Courier New', monospace;
@@ -426,7 +426,7 @@ class CoreWindow(QMainWindow):
                     }
                 """)
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
                 QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
                     QLabel {
                         font-family: 'Consolas', 'Courier New', monospace;
@@ -451,7 +451,7 @@ class CoreWindow(QMainWindow):
                     }
                 """)
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
                 QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
                     QLabel {
                         font-family: 'Consolas', 'Courier New', monospace;
@@ -473,7 +473,7 @@ class CoreWindow(QMainWindow):
                     }
                 """)
                 from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_core? (Y/N)"))
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
                 QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
                     QLabel {
                         font-family: 'Consolas', 'Courier New', monospace;
@@ -521,7 +521,7 @@ class CoreWindow(QMainWindow):
         }
         
         # Update commit prompt
-        self.commit_label.setText(f"commit_to_core? (Y/N) [{len(self.pending_changes)} pending]")
+        self.commit_label.setText(f"commit_to_modules? (Y/N) [{len(self.pending_changes)} pending]")
         self.commit_label.setStyleSheet("""
             QLabel {
                 font-family: 'Consolas', 'Courier New', monospace;

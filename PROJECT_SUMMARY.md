@@ -67,7 +67,7 @@ E.V3 is a privacy-focused desktop companion application for Windows that combine
 
 ## Technical Stack
 
-### Core Technologies
+### Key Technologies
 - **Python 3.10+**
 - **PySide6**: Qt6 for GUI
 - **PyOpenGL**: 3D rendering
@@ -90,7 +90,7 @@ E.V3 is a privacy-focused desktop companion application for Windows that combine
 ```
 E.V3/
 ├── service/              # Background service
-│   ├── core/            # Main service logic
+│   ├── modules/         # Main service logic (renamed from core)
 │   │   └── service.py   # EV3Service class
 │   ├── state/           # State machine
 │   │   └── state_machine.py
@@ -303,7 +303,7 @@ Private project - see license file for details.
 ## Version History
 
 ### v0.1.0 (Initial Release)
-- Core service implementation
+  - Modules service implementation
 - 3D UI with OpenGL
 - State machine
 - Event monitoring

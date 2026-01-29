@@ -1,12 +1,13 @@
 # E.V3 - Privacy-Focused Desktop Companion
 
-A privacy-first desktop companion with a 3D animated character consisting of a background daemon and interactive shell.
+A privacy-first desktop companion with a 3D animated character, built on a **microkernel architecture** with isolated capability modules.
 
 ## Features
 
 - **Privacy First**: No data scraping, no raw logs sent, all processing local by default
-- **Native Windows Daemon**: Runs in background, monitors system events
-- **Interactive Shell**: System tray control with Show/Hide, Stop Daemon, Exit menu
+- **Microkernel Architecture**: Modular design with permission boundaries and event-based communication
+-- **Native Windows Kernel**: Runs in background, monitors system events
+-- **Interactive Shell**: System tray control with Show/Hide, Stop Kernel, Exit menu
 - **3D Animated Character**: VRoid/Blender models with bone animations and blendshapes
 - **Local LLM**: Mistral 7B quantized for personality and event interpretation
 - **Optional External LLM**: GPT mini API only when explicitly requested
@@ -14,82 +15,89 @@ A privacy-first desktop companion with a 3D animated character consisting of a b
 - **Calendar Integration**: Surface reminders from your calendar
 - **Transparent UI**: Frameless window with proper transparency support
 - **System Tray Control**: Full control via system tray icon
-- **Native IPC**: Fast communication between daemon and shell
+-- **Native IPC**: Fast communication between kernel and shell via named pipes
 
 ## Architecture
 
+**Microkernel Design** - Minimal core + isolated capability modules:
+
 ```
-┌─────────────────────────────────────┐
-│   E.V3 Daemon (Background Service)  │
-│  ┌──────────────────────────────┐   │
-│  │   State Machine               │   │
-│  │   (idle/scanning/alert/       │   │
-│  │    reminder)                  │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   Event Listeners             │   │
-│  │   - Windows Defender          │   │
-│  │   - Firewall                  │   │
-│  │   - System Notifications      │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   LLM Integration             │   │
-│  │   - Local: Mistral 7B         │   │
-│  │   - External: GPT mini        │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   Calendar Integration        │   │
-│  └──────────────────────────────┘   │
-└─────────────────────────────────────┘
-              │
-              │ Native IPC
-              │ (Named Pipes)
-              ▼
-┌─────────────────────────────────────┐
-│   E.V3 Shell (3D UI with Tray)      │
-│  ┌──────────────────────────────┐   │
-│  │   System Tray Icon            │   │
-│  │   - Show/Hide Shell           │   │
-│  │   - Stop Daemon               │   │
-│  │   - Exit                      │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   Transparent Window          │   │
-│  │   Bottom-right, Moveable      │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   3D Model Renderer           │   │
-│  │   - Bone animations           │   │
-│  │   - Blendshapes               │   │
-│  │   - Glow effects              │   │
-│  └──────────────────────────────┘   │
-│  ┌──────────────────────────────┐   │
-│  │   Animation Controller        │   │
-│  │   - Idle breathing            │   │
-│  │   - Eye blinking              │   │
-│  │   - Alert poses               │   │
-│  └──────────────────────────────┘   │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     E.V3 MICROKERNEL                        │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Minimal Event Loop Core                             │   │
+│  │  - Event bus for module communication                │   │
+│  │  - Permission checker (scoped storage)               │   │
+│  │  - Module registry (lifecycle management)            │   │
+│  │  - Kernel API (emit/subscribe events, config access) │   │
+│  └──────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ Kernel API (Permission-Checked Boundary)
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  CAPABILITY MODULES                         │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │   State     │  │   Events    │  │    LLM      │        │
+│  │   Module    │  │   Module    │  │   Module    │        │
+│  │ (idle/      │  │ (Defender/  │  │ (Mistral/   │        │
+│  │  alert/     │  │  Firewall)  │  │  GPT mini)  │        │
+│  │  reminder)  │  │             │  │             │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐                          │
+│  │  Calendar   │  │    IPC      │                          │
+│  │   Module    │  │   Module    │                          │
+│  │ (Reminders) │  │ (Named Pipe)│                          │
+│  └─────────────┘  └─────────────┘                          │
+│                                                             │
+│  All modules: Explicit permissions, lifecycle, events      │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ Native IPC (Named Pipes)
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│   E.V3 Shell (3D UI with System Tray)                       │
+│  - Transparent window with 3D character                     │
+│  - System tray control (Show/Hide/Stop/Exit)                │
+│  - Animation system (breathing, blinking, expressions)      │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed module documentation.
 
 ## Project Structure
 
 ```
 E.V3/
-├── service/              # Background service
-│   ├── core/            # Core service logic
-│   ├── events/          # Event listeners
-│   ├── llm/             # LLM integration
-│   ├── calendar/        # Calendar integration
-│   └── state/           # State machine
-├── ui/                  # 3D UI layer
-│   ├── renderer/        # OpenGL 3D renderer
-│   ├── window/          # Transparent window
-│   └── animations/      # Animation system
-├── ipc/                 # Native IPC communication
-├── models/              # 3D character models
+├── kernel/              # Microkernel core
+│   ├── kernel.py       # Event bus, permissions, registry
+│   └── module.py       # Module interface, KernelAPI
+│
+├── modules/             # Capability modules
+│   ├── state_module.py    # State machine
+│   ├── event_module.py    # System event monitoring
+│   ├── llm_module.py      # LLM processing
+│   ├── calendar_module.py # Calendar integration
+│   └── ipc_module.py      # Inter-process communication
+│
+├── service/             # Legacy implementations (used by modules)
+│   ├── state/          # State machine implementation
+│   ├── events/         # Event listeners
+│   ├── llm/            # LLM providers
+│   └── calendar/       # Calendar providers
+│
+├── ui/                  # 3D UI shell (separate process)
+│   ├── renderer/       # OpenGL 3D renderer
+│   ├── window/         # Transparent window
+│   └── animations/     # Animation system
+│
+├── ipc/                 # IPC implementation (named pipes)
+├── models/              # LLM and 3D character models
 ├── config/              # Configuration
-└── tests/               # Tests
+├── main_service.py      # Kernel entrypoint
+└── main_ui.py           # Shell entrypoint
 ```
 
 ## Requirements
@@ -101,14 +109,12 @@ E.V3/
 
 ## Installation
 
-### For Users (Executable)
-1. Download the latest release (EV3_Setup_vX.X.X.exe)
-2. Run the installer
-3. Choose to install as Windows service (recommended)
-4. Launch E.V3 from Start Menu
-
-### For Developers (Python)
+### Quick Setup
 ```bash
+# Clone repository
+git clone https://github.com/yourusername/E.V3.git
+cd E.V3
+
 # Run setup
 setup.bat
 
@@ -116,28 +122,41 @@ setup.bat
 pip install -r requirements.txt
 ```
 
+### Model Setup
+
+1. **LLM Model** (Required for AI features):
+   - Download Mistral 7B quantized model from HuggingFace
+   - See [models/MODEL_SETUP.md](models/MODEL_SETUP.md) for instructions
+   - Place in `models/llm/` directory
+
+2. **3D Character Model** (Optional):
+   - Use built-in test character, OR
+   - Add your own VRoid (.vrm) or Blender (.glb/.gltf) model
+   - Place in `models/character/` directory
+   - Update `config/config.yaml` with model path
+
 ## Usage
 
 ### Quick Start (Recommended)
 ```batch
-# Start both Daemon and Shell
+# Start both kernel and shell together
 start_ev3.bat
 ```
 
-The Shell will appear in your system tray. Right-click the icon for options.
+The shell will appear in your system tray. Right-click the tray icon for options.
 
 ### Separate Launch
 ```batch
-# Start Daemon (background service)
-start_daemon.bat
+# Start kernel (background service)
+start_kernel.bat
 
-# Start Shell (UI with system tray)
+# Start shell (UI with system tray) - in separate terminal
 start_shell.bat
 ```
 
 ### Python Direct
 ```bash
-# Run daemon
+# Run kernel
 python main_service.py
 
 # Run shell (in separate terminal)
@@ -145,20 +164,111 @@ python main_ui.py
 ```
 
 ### System Tray Control
-Once the Shell is running:
+Once the shell is running:
 - **Find Icon**: Check Windows system tray (bottom-right, may be in hidden icons)
 - **Show/Hide**: Double-click icon or use "Show/Hide Shell" menu
-- **Stop Daemon**: Right-click → "Stop Daemon"
+-- **Stop Kernel**: Right-click → "Stop Kernel"
 - **Exit**: Right-click → "Exit"
 
-### Executable Version (when built)
-```bash
-# Run daemon
-dist/EV3Daemon.exe
+### Chat with E.V3
+Interact with the AI companion:
+- **Summon Chat**: Press **Win+C** (default) to show character and open chat window
+- **Type Message**: Enter your message in the chat window
+- **External LLM**: Include "find out" in your message to use GPT mini instead of local LLM
+- **Close Chat**: Click the X button to close chat window independently
+- **Configure Hotkey**: Right-click tray icon → Shell → Summon Hotkey → Enable/Disable
 
-# Run shell
-dist/EV3Shell.exe
+The chat window:
+- Floats next to the 3D character
+- Shows conversation history (last 10 messages)
+- Can be closed without hiding the character
+- Press Enter or click Send to submit messages
+
+## Configuration
+
+Edit `config/config.yaml` to customize:
+
+### Privacy Settings
+```yaml
+privacy:
+  local_only: true              # Use only local LLM
+  allow_external_on_request: true  # Allow GPT mini on "find out" trigger
+  no_telemetry: true            # No analytics/telemetry
+  anonymize_events: true        # Strip personal data from events
 ```
+
+### Module Toggles
+```yaml
+events:
+  windows_defender:
+    enabled: true
+  firewall:
+    enabled: true
+
+calendar:
+  enabled: true
+  provider: "outlook"  # or "google"
+
+llm:
+  local:
+    enabled: true
+  external:
+    enabled: false  # Only on "find out" trigger
+```
+
+### UI Settings
+```yaml
+ui:
+  window:
+    position: "bottom_right"
+    width: 400
+    height: 600
+    opacity: 0.95
+  model:
+    model_path: "models/character/your-model.vrm"
+    scale: 1.0
+  hotkey:
+    enabled: true
+    combination: "win+c"  # Windows key + C to summon
+```
+
+See config file for full options.
+
+## Microkernel Architecture
+
+E.V3 uses a **microkernel architecture** for:
+- **Modularity**: Add/remove capabilities without core changes
+- **Security**: Permission boundaries between modules
+- **Reliability**: Module failures don't crash kernel
+- **Testability**: Test modules in isolation
+
+### Module Lifecycle
+
+Each module follows the lifecycle:
+1. **Load** - Initialize with configuration
+2. **Enable** - Start active operations
+3. **Disable** - Pause operations
+4. **Shutdown** - Release resources
+
+### Permission Model
+
+Modules must declare permissions:
+- `IPC_SEND` / `IPC_RECEIVE`
+- `EVENT_EMIT` / `EVENT_SUBSCRIBE`
+- `STORAGE_READ` / `STORAGE_WRITE`
+- `SYSTEM_EVENTS` / `SECURITY_EVENTS`
+- `CALENDAR_READ`
+- `LLM_LOCAL` / `LLM_EXTERNAL`
+
+### Event Bus
+
+Modules communicate via central event bus:
+- State changes: `state.changed`
+- System events: `system.defender`, `system.firewall`
+- IPC messages: `ipc.user_message`, `ipc.send_message`
+- State transitions: `state.transition.alert`, `state.transition.reminder`
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Building Executables
 
@@ -173,22 +283,118 @@ pip install pyinstaller
 python build_exe.py
 ```
 
+Executables will be in `dist/`:
+- `EV3Kernel.exe` - Background kernel
+- `EV3Shell.exe` - UI shell
+
 See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
 
-## Privacy Controls
+## Documentation
 
-All privacy settings in `config/privacy.yaml`:
-- Local LLM only by default
-- External API only on "find out" trigger
-- No telemetry, no analytics
-- All data processed locally
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Microkernel design, modules, event flows
+- **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - LLM and 3D model setup
+- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building executables
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development workflow
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - User guide
 
-## Model Setup
+## Privacy & Security
 
-Place your VRoid or Blender exported model (with armature) in `models/` directory:
-- Supported formats: .vrm, .glb, .gltf
-- Should include bone structure for animations
-- Optional: blendshapes for facial expressions
+### Local-First Design
+- All AI processing happens on your machine by default
+- No analytics, telemetry, or tracking
+- Event data is anonymized (no usernames, paths, IPs)
+- Configuration and state stored locally only
+
+### Permission Model
+- Each module declares required permissions
+- Kernel enforces permission boundaries at runtime
+- Scoped storage - modules can't access each other's data
+- Event-based communication prevents direct coupling
+
+### External API Usage
+- External LLM (GPT mini) only enabled when explicitly requested
+- Trigger phrase: "find out"
+- All external calls logged
+- Can be completely disabled in config
+
+## Development
+
+### Adding a New Module
+
+1. Create module class inheriting from `Module`:
+```python
+from kernel.module import Module, Permission, KernelAPI
+
+class MyModule(Module):
+    def __init__(self, kernel_api: KernelAPI):
+        super().__init__("my_module", kernel_api)
+    
+    def get_required_permissions(self) -> Set[Permission]:
+        return {Permission.EVENT_EMIT}
+    
+    def get_dependencies(self) -> Set[str]:
+        return {"state"}  # depends on state module
+    
+    def load(self, config: Dict[str, Any]) -> bool:
+        # Initialize resources
+        return True
+    
+    def enable(self) -> bool:
+        # Start operations
+        return True
+    
+    def disable(self) -> bool:
+        # Pause operations
+        return True
+    
+    def shutdown(self) -> bool:
+        # Cleanup
+        return True
+    
+    def handle_event(self, event_type: str, event_data: Dict[str, Any]) -> None:
+        # Process events
+        pass
+```
+
+2. Register in [main_service.py](main_service.py):
+```python
+my_module = MyModule(kernel_api)
+kernel.register_module(my_module)
+```
+
+3. Add configuration to `config/config.yaml`
+
+### Testing
+
+```bash
+# Run tests
+python -m pytest tests/
+
+# Test specific component
+python tests/test_components.py
+```
+
+## Troubleshooting
+
+### Kernel won't start
+- Check logs in `logs/ev3.log`
+- Ensure no other instance is running
+- Verify config file syntax
+
+### LLM not responding
+- Check if model file exists in `models/llm/`
+- Verify GPU drivers (if using GPU acceleration)
+- Try CPU-only mode: set `use_gpu: false` in config
+
+### UI not appearing
+-- Check if kernel is running first
+- Look for shell in system tray (may be in hidden icons)
+- Check UI logs for errors
+
+### Module failures
+- Check `logs/ev3.log` for module-specific errors
+- Verify module dependencies are enabled
+- Check module permissions in config
 
 ## License
 

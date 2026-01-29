@@ -1,6 +1,6 @@
 @echo off
 REM E.V3 Complete Launcher - Executable Version
-REM Starts both Daemon.exe and Shell.exe from dist folder
+REM Starts both Kernel.exe and Shell.exe from dist folder
 title E.V3 Launcher
 
 echo ============================================
@@ -8,8 +8,8 @@ echo E.V3 - Privacy-Focused Desktop Companion
 echo ============================================
 echo.
 
-if not exist "dist\Daemon.exe" (
-    echo ERROR: Daemon.exe not found in dist folder!
+if not exist "dist\Kernel.exe" (
+    echo ERROR: Kernel.exe not found in dist folder!
     echo Please build executables first: python build_exe.py
     echo.
     echo Using Python version instead...
@@ -26,8 +26,8 @@ if not exist "dist\Shell.exe" (
 
 cd dist
 
-echo Starting Daemon...
-start "E.V3 Daemon" /MIN Daemon.exe
+echo Starting Kernel...
+start "E.V3 Kernel" /MIN Kernel.exe
 timeout /t 2 /nobreak > nul
 
 if exist "Shell.exe" (
@@ -44,7 +44,7 @@ cd ..
 
 echo.
 echo E.V3 is now running!
-echo - Daemon: Background service
+echo - Kernel: Background service
 echo - Shell: UI with system tray icon
 echo.
 echo To control: Right-click the system tray icon

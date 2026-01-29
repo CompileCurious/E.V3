@@ -3,16 +3,19 @@ Transparent Shell Window
 Frameless, always-on-top window with 3D character and system tray control
 """
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QSystemTrayIcon, QMenu, QApplication
-from PySide6.QtCore import Qt, QPoint, QTimer
-from PySide6.QtGui import QScreen, QIcon, QAction
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+                               QSystemTrayIcon, QMenu, QApplication, QLineEdit, QPushButton,
+                               QFrame, QDialog)
+from PySide6.QtCore import Qt, QPoint, QTimer, Signal
+from PySide6.QtGui import QScreen, QIcon, QAction, QKeySequence, QShortcut
 from typing import Dict, Any, Optional
 from loguru import logger
 import sys
+import keyboard
 
 from ui.renderer import OpenGLRenderer
 from ui.animations import AnimationController
-from ui.window.core_window import CoreWindow
+from ui.window.core_window import ModulesWindow
 
 
 class CompanionWindow(QMainWindow):
@@ -31,6 +34,9 @@ class CompanionWindow(QMainWindow):
         self.config = config
         self.is_click_through = False  # Start non-click-through so it's controllable
         self.current_state = "idle"
+        self.chat_window = None
+        self.hotkey_enabled = True
+        self.hotkey_combination = "win+c"  # Default hotkey
         
         # Setup window properties
         self._setup_window()
@@ -43,6 +49,9 @@ class CompanionWindow(QMainWindow):
         
         # Position window
         self._position_window()
+        
+        # Setup global hotkey
+        self._setup_global_hotkey()
         
         logger.info("Shell window initialized")
     
@@ -208,19 +217,44 @@ class CompanionWindow(QMainWindow):
         
         shell_menu.addMenu(output_menu)
         
+        shell_menu.addSeparator()
+        
+        # Hotkey Configuration
+        hotkey_menu = QMenu("Summon Hotkey", shell_menu)
+        
+        self.hotkey_enabled_action = QAction("Enable Hotkey", self, checkable=True)
+        self.hotkey_enabled_action.setChecked(True)
+        self.hotkey_enabled_action.triggered.connect(self.toggle_hotkey)
+        hotkey_menu.addAction(self.hotkey_enabled_action)
+        
+        hotkey_menu.addSeparator()
+        
+        hotkey_info_action = QAction(f"Current: {self.hotkey_combination.upper()}", self)
+        hotkey_info_action.setEnabled(False)
+        hotkey_menu.addAction(hotkey_info_action)
+        
+        shell_menu.addMenu(hotkey_menu)
+        
+        shell_menu.addSeparator()
+        
+        # Open Chat action
+        open_chat_action = QAction("Open Chat Window", self)
+        open_chat_action.triggered.connect(self.open_chat_window)
+        shell_menu.addAction(open_chat_action)
+        
         tray_menu.addMenu(shell_menu)
         
-        # === DAEMON SUBMENU ===
-        daemon_menu = QMenu("Daemon", tray_menu)
+        # === KERNEL SUBMENU ===
+        daemon_menu = QMenu("Kernel", tray_menu)
         
-        # Stop Daemon action
-        stop_daemon_action = QAction("Stop Daemon", self)
-        stop_daemon_action.triggered.connect(self.stop_daemon)
+        # Stop Kernel action
+        stop_daemon_action = QAction("Stop Kernel", self)
+        stop_daemon_action.triggered.connect(self.stop_kernel)
         daemon_menu.addAction(stop_daemon_action)
         
-        # Restart Daemon action
-        restart_daemon_action = QAction("Restart Daemon", self)
-        restart_daemon_action.triggered.connect(self.restart_daemon)
+        # Restart Kernel action
+        restart_daemon_action = QAction("Restart Kernel", self)
+        restart_daemon_action.triggered.connect(self.restart_kernel)
         daemon_menu.addAction(restart_daemon_action)
         
         daemon_menu.addSeparator()
@@ -338,9 +372,9 @@ class CompanionWindow(QMainWindow):
         
         tray_menu.addMenu(daemon_menu)
         
-        # === CORE MENU ===
-        core_action = QAction("Core", self)
-        core_action.triggered.connect(self.open_core_window)
+        # === MODULES MENU ===
+        core_action = QAction("Modules", self)
+        core_action.triggered.connect(self.open_modules_window)
         tray_menu.addAction(core_action)
         
         tray_menu.addSeparator()
@@ -396,29 +430,29 @@ class CompanionWindow(QMainWindow):
             self.show_hide_action.setText("Hide Shell")
             logger.info("Shell shown")
     
-    def stop_daemon(self):
-        """Stop the daemon service"""
+    def stop_kernel(self):
+        """Stop the kernel service"""
         import subprocess
         try:
-            # Try to stop EV3Service.exe
-            subprocess.run(["taskkill", "/F", "/IM", "EV3Daemon.exe"], 
+            # Try to stop EV3Kernel.exe
+            subprocess.run(["taskkill", "/F", "/IM", "EV3Kernel.exe"], 
                           capture_output=True)
             self.tray_icon.showMessage(
                 "E.V3",
-                "Daemon stopped",
+                "Kernel stopped",
                 QSystemTrayIcon.Information,
                 2000
             )
-            logger.info("Daemon stop requested")
+            logger.info("Kernel stop requested")
         except Exception as e:
-            logger.error(f"Failed to stop daemon: {e}")
+            logger.error(f"Failed to stop kernel: {e}")
     
-    def restart_daemon(self):
-        """Restart the daemon service"""
-        logger.info("Daemon restart requested")
+    def restart_kernel(self):
+        """Restart the kernel service"""
+        logger.info("Kernel restart requested")
         self.tray_icon.showMessage(
             "E.V3",
-            "Daemon restart not yet implemented",
+            "Kernel restart not yet implemented",
             QSystemTrayIcon.Information,
             2000
         )
@@ -587,8 +621,8 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        # Notify daemon of permission change via IPC
-        self._notify_daemon_permissions()
+        # Notify kernel of permission change via IPC
+        self._notify_kernel_permissions()
     
     def set_network_permission(self, level: str):
         """Set network access level"""
@@ -604,7 +638,7 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        self._notify_daemon_permissions()
+        self._notify_kernel_permissions()
     
     def set_sysinfo_permission(self, level: str):
         """Set system information access level"""
@@ -620,7 +654,7 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        self._notify_daemon_permissions()
+        self._notify_kernel_permissions()
     
     def set_calendar_permission(self, level: str):
         """Set calendar access level"""
@@ -636,7 +670,7 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        self._notify_daemon_permissions()
+        self._notify_kernel_permissions()
     
     def set_llm_permission(self, level: str):
         """Set LLM data usage permission"""
@@ -652,7 +686,7 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        self._notify_daemon_permissions()
+        self._notify_kernel_permissions()
     
     def toggle_llm_logging(self):
         """Toggle LLM query logging"""
@@ -668,7 +702,7 @@ class CompanionWindow(QMainWindow):
             2000
         )
         
-        self._notify_daemon_permissions()
+        self._notify_kernel_permissions()
     
     def manage_allowed_folders(self):
         """Open dialog to manage allowed folders for scoped access"""
@@ -694,7 +728,7 @@ class CompanionWindow(QMainWindow):
                         2000
                     )
                     
-                    self._notify_daemon_permissions()
+                    self._notify_kernel_permissions()
                 else:
                     QMessageBox.information(
                         self,
@@ -751,24 +785,24 @@ class CompanionWindow(QMainWindow):
                 2000
             )
             
-            self._notify_daemon_permissions()
+            self._notify_kernel_permissions()
     
-    def _notify_daemon_permissions(self):
-        """Notify daemon of permission changes via IPC"""
-        # This would send an IPC message to the daemon
+    def _notify_kernel_permissions(self):
+        """Notify kernel of permission changes via IPC"""
+        # This would send an IPC message to the kernel
         # For now, just log it
-        logger.info("Daemon notified of permission changes")
-        # TODO: Implement IPC message sending when daemon connection is available
+        logger.info("Kernel notified of permission changes")
+        # TODO: Implement IPC message sending when kernel connection is available
         # Example: self.ipc_client.send_message("update_permissions", self.permissions)
     
-    def open_core_window(self):
-        """Open the Core configuration window"""
-        logger.info("Opening Core window")
-        
-        # Check if Core window already exists
+    def open_modules_window(self):
+        """Open the Modules configuration window"""
+        logger.info("Opening Modules window")
+
+        # Check if Modules window already exists
         if not hasattr(self, 'core_window') or not self.core_window:
-            self.core_window = CoreWindow(self)
-        
+            self.core_window = ModulesWindow(self)
+
         self.core_window.show()
         self.core_window.raise_()
         self.core_window.activateWindow()
@@ -916,3 +950,241 @@ class CompanionWindow(QMainWindow):
                 self.set_state("idle")
                 # Notify service (would send IPC message)
                 logger.info("Notification dismissed by user")
+    
+    def _setup_global_hotkey(self):
+        """Setup global keyboard shortcut to summon character and chat"""
+        try:
+            keyboard.add_hotkey(self.hotkey_combination, self._on_hotkey_pressed)
+            logger.info(f"Global hotkey registered: {self.hotkey_combination}")
+        except Exception as e:
+            logger.error(f"Failed to register global hotkey: {e}")
+    
+    def _on_hotkey_pressed(self):
+        """Handle hotkey press - show window and open chat"""
+        if not self.hotkey_enabled:
+            return
+        
+        logger.info("Hotkey pressed - summoning character and chat")
+        
+        # Show window if hidden
+        if not self.isVisible():
+            self.show()
+        
+        # Bring to front
+        self.raise_()
+        self.activateWindow()
+        
+        # Open chat window
+        self.open_chat_window()
+    
+    def toggle_hotkey(self, checked: bool):
+        """Toggle hotkey enabled/disabled"""
+        self.hotkey_enabled = checked
+        logger.info(f"Hotkey {'enabled' if checked else 'disabled'}")
+    
+    def open_chat_window(self):
+        """Open the chat input window"""
+        if self.chat_window is None:
+            self.chat_window = ChatWindow(self)
+            self.chat_window.message_sent.connect(self.send_chat_message)
+        
+        # Position chat window next to character
+        chat_pos = self.pos()
+        chat_pos.setX(chat_pos.x() - self.chat_window.width() - 10)
+        self.chat_window.move(chat_pos)
+        
+        self.chat_window.show()
+        self.chat_window.raise_()
+        self.chat_window.focus_input()
+        
+        logger.info("Chat window opened")
+    
+    def send_chat_message(self, message: str):
+        """Send chat message to kernel via IPC"""
+        logger.info(f"Sending chat message: {message[:50]}...")
+        
+        # This should be connected to IPC client in main_ui.py
+        # For now, just log it
+        # self.ipc_client.send_message("user_message", {"message": message})
+    
+    def display_chat_response(self, response: str):
+        """Display LLM response in chat window"""
+        if self.chat_window and self.chat_window.isVisible():
+            self.chat_window.display_response(response)
+
+
+class ChatWindow(QDialog):
+    """
+    Floating chat window for user input and LLM responses
+    Can be closed independently of the character window
+    """
+    
+    message_sent = Signal(str)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.setWindowTitle("Chat with E.V3")
+        self.setWindowFlags(
+            Qt.Window |
+            Qt.WindowStaysOnTopHint |
+            Qt.CustomizeWindowHint |
+            Qt.WindowTitleHint |
+            Qt.WindowCloseButtonHint
+        )
+        
+        self.setFixedSize(400, 500)
+        self.setStyleSheet("""
+            QDialog {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2b2b2b, stop:1 #1a1a1a);
+                border: 2px solid #3a7bd5;
+                border-radius: 10px;
+            }
+            QLabel {
+                color: #ffffff;
+                font-size: 13px;
+                padding: 5px;
+            }
+            QLineEdit {
+                background: #3a3a3a;
+                color: #ffffff;
+                border: 2px solid #555555;
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #3a7bd5;
+            }
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #3a7bd5, stop:1 #2563a8);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4a8be5, stop:1 #3573b8);
+            }
+            QPushButton:pressed {
+                background: #2563a8;
+            }
+            QFrame {
+                background: #2a2a2a;
+                border: 1px solid #444444;
+                border-radius: 5px;
+            }
+        """)
+        
+        self._create_ui()
+    
+    def _create_ui(self):
+        """Create chat UI"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Title
+        title = QLabel("💬 Chat with E.V3")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #3a7bd5;")
+        layout.addWidget(title)
+        
+        # Chat history display
+        self.chat_history = QLabel("")
+        self.chat_history.setWordWrap(True)
+        self.chat_history.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.chat_history.setStyleSheet("""
+            QLabel {
+                background: #2a2a2a;
+                border: 1px solid #444444;
+                border-radius: 5px;
+                padding: 10px;
+                color: #e0e0e0;
+                font-size: 12px;
+            }
+        """)
+        
+        # Scroll area for chat history
+        history_frame = QFrame()
+        history_frame.setFixedHeight(320)
+        history_layout = QVBoxLayout(history_frame)
+        history_layout.setContentsMargins(0, 0, 0, 0)
+        history_layout.addWidget(self.chat_history)
+        layout.addWidget(history_frame)
+        
+        # Input area
+        input_label = QLabel("Your message:")
+        layout.addWidget(input_label)
+        
+        # Input field
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText("Type your message here... (add 'find out' for external LLM)")
+        self.input_field.returnPressed.connect(self._send_message)
+        layout.addWidget(self.input_field)
+        
+        # Send button
+        send_button = QPushButton("Send")
+        send_button.clicked.connect(self._send_message)
+        layout.addWidget(send_button)
+        
+        # Info label
+        info_label = QLabel("💡 Tip: Press Enter to send, close button (X) to hide chat window")
+        info_label.setStyleSheet("font-size: 11px; color: #888888;")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+        
+        self.chat_messages = []
+    
+    def _send_message(self):
+        """Send message from input field"""
+        message = self.input_field.text().strip()
+        
+        if not message:
+            return
+        
+        # Add to history
+        self.chat_messages.append(f"<b>You:</b> {message}")
+        self._update_history()
+        
+        # Emit signal
+        self.message_sent.emit(message)
+        
+        # Clear input
+        self.input_field.clear()
+        
+        # Add "thinking" indicator
+        self.chat_messages.append("<i style='color: #3a7bd5;'>E.V3 is thinking...</i>")
+        self._update_history()
+    
+    def display_response(self, response: str):
+        """Display LLM response"""
+        # Remove "thinking" indicator
+        if self.chat_messages and "thinking" in self.chat_messages[-1]:
+            self.chat_messages.pop()
+        
+        # Add response
+        self.chat_messages.append(f"<b style='color: #3a7bd5;'>E.V3:</b> {response}")
+        self._update_history()
+    
+    def _update_history(self):
+        """Update chat history display"""
+        # Keep last 10 messages
+        if len(self.chat_messages) > 10:
+            self.chat_messages = self.chat_messages[-10:]
+        
+        history_text = "<br><br>".join(self.chat_messages)
+        self.chat_history.setText(history_text)
+    
+    def focus_input(self):
+        """Focus the input field"""
+        self.input_field.setFocus()
+    
+    def closeEvent(self, event):
+        """Handle window close - hide instead of destroy"""
+        self.hide()
+        event.accept()

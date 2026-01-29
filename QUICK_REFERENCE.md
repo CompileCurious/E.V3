@@ -1,21 +1,21 @@
 # E.V3 Quick Reference
 
 ## Terminology
-- **Daemon**: Background service that monitors system events
+- **Kernel**: Background service that monitors system events
 - **Shell**: Interactive UI with 3D character and system tray icon
 
 ## Quick Start
 ```batch
 start_ev3.bat
 ```
-This starts both Daemon and Shell.
+This starts both Kernel and Shell.
 
 ## System Tray Icon
 **Location**: Windows taskbar, bottom-right (may be in hidden icons area)
 
 **Menu Options:**
 - **Show/Hide Shell**: Toggle window visibility
-- **Stop Daemon**: Stop background service
+- **Stop Kernel**: Stop background service
 - **Exit**: Close Shell application
 
 **Shortcuts:**
@@ -28,14 +28,15 @@ This starts both Daemon and Shell.
 - **Exit**: Use system tray menu
 
 ## Files
-- `start_ev3.bat` - Launch both Daemon and Shell
-- `start_daemon.bat` - Launch Daemon only
+-- `start_ev3.bat` - Launch both Kernel and Shell
+-- `start_kernel.bat` - Launch Kernel only
 - `start_shell.bat` - Launch Shell only
-- `main_service.py` - Daemon Python script
+-- `main_service.py` - Kernel Python script
 - `main_ui.py` - Shell Python script
-
+**Shell can't connect to Kernel:**
+- Start Kernel first with `start_kernel.bat`
 ## Executables (when built)
-- `dist/EV3Daemon.exe` - Background service
+-- `dist/EV3Kernel.exe` - Background service
 - `dist/EV3Shell.exe` - UI application
 - `dist/EV3Service.exe` - Old name (same as Daemon)
 
@@ -63,8 +64,8 @@ Edit `config/config.yaml` for settings:
 - Look in hidden icons (click ^ arrow in taskbar)
 - Check Windows notification settings
 
-**Shell can't connect to Daemon:**
-- Start Daemon first with `start_daemon.bat`
+**Shell can't connect to Kernel:**
+- Start Kernel first with `start_kernel.bat`
 - Check `logs/ev3.log` for errors
 - Verify no firewall blocking
 
@@ -73,7 +74,7 @@ Edit `config/config.yaml` for settings:
 - Try running as administrator
 - Check OpenGL support with `python -c "from OpenGL.GL import *; print(glGetString(GL_VERSION))"`
 
-**Daemon won't start:**
+- **Kernel won't start:**
 - Check if already running (only one instance allowed)
 - Look in Task Manager for existing python/EV3 processes
 - Check logs in `logs/ev3.log`

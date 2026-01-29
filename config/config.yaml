@@ -140,6 +140,11 @@ ui:
       intensity: 0.5
       pulse: true
       pulse_speed: 1.0
+  
+  # Global hotkey to summon character and chat
+  hotkey:
+    enabled: true
+    combination: "win+c"  # Default: Windows key + C
 
 # IPC settings
 ipc:

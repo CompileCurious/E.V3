@@ -298,7 +298,7 @@ UI → Service
 E.V3/
 │
 ├── service/              ◀── Background Service
-│   ├── core/            │   Main logic
+│   ├── modules/         │   Main logic (renamed from core)
 │   ├── state/           │   State machine
 │   ├── events/          │   Event monitoring
 │   ├── llm/             │   AI integration

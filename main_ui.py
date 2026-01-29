@@ -18,8 +18,8 @@ class EV3UIApplication:
     """
     Main UI application
     - Displays 3D companion window
-    - Connects to background service via IPC
-    - Updates UI based on service state
+    - Connects to background kernel via IPC
+    - Updates UI based on kernel state
     """
     
     def __init__(self, config_path: str = "config/config.yaml"):
@@ -78,6 +78,11 @@ class EV3UIApplication:
         # Create main window
         self.window = CompanionWindow(self.config)
         
+        # Connect chat message signal
+        if hasattr(self.window, 'send_chat_message'):
+            # Override the send_chat_message method to use IPC
+            self.window.send_chat_message = self._send_message_via_ipc
+        
         # Setup IPC client
         ipc_config = self.config.get("ipc", {})
         self.ipc_client = IPCClient(
@@ -95,15 +100,15 @@ class EV3UIApplication:
         logger.info("UI initialized")
     
     def _connect_to_service(self):
-        """Connect to background service"""
-        logger.info("Connecting to service...")
+        """Connect to background kernel"""
+        logger.info("Connecting to kernel...")
         
         # Try to connect
         if self.ipc_client.connect(timeout_ms=5000):
-            logger.info("Connected to service")
+            logger.info("Connected to kernel")
         else:
-            logger.warning("Failed to connect to service. UI will run in standalone mode.")
-            logger.info("Start the service with: python main_service.py")
+            logger.warning("Failed to connect to kernel. UI will run in standalone mode.")
+            logger.info("Start the kernel with: python main_service.py")
             
             # Retry connection periodically
             self.retry_timer = QTimer()
@@ -111,11 +116,11 @@ class EV3UIApplication:
             self.retry_timer.start(5000)  # Retry every 5 seconds
     
     def _retry_connection(self):
-        """Retry connection to service"""
+        """Retry connection to kernel"""
         if not self.ipc_client.connected:
-            logger.debug("Retrying connection to service...")
+            logger.debug("Retrying connection to kernel...")
             if self.ipc_client.connect(timeout_ms=1000):
-                logger.info("Connected to service")
+                logger.info("Connected to kernel")
                 self.retry_timer.stop()
         else:
             self.retry_timer.stop()
@@ -149,12 +154,18 @@ class EV3UIApplication:
         
         logger.info(f"LLM response: {message}")
         
-        # Display message in window
+        # Display in chat window if open
         if self.window:
+            self.window.display_chat_response(message)
             self.window.show_message(message)
-        
-        # Show message
-        self.window.show_message(message)
+    
+    def _send_message_via_ipc(self, message: str):
+        """Send user message to kernel via IPC"""
+        if self.ipc_client and self.ipc_client.connected:
+            logger.info(f"Sending message to kernel: {message[:50]}...")
+            self.ipc_client.send_message("user_message", {"message": message})
+        else:
+            logger.warning("IPC client not connected")
     
     def send_user_message(self, message: str):
         """Send user message to service"""

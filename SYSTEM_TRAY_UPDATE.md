@@ -2,8 +2,8 @@
 
 ## Changes Made
 
-### 1. Renamed Components
-- **Service → Daemon**: Background Windows service
+- ### 1. Renamed Components
+- **Service → Kernel**: Background Windows service
 - **Companion → Shell**: UI application with 3D character
 
 ### 2. System Tray Icon (ui/window/companion_window.py)
@@ -11,7 +11,7 @@ Added full system tray functionality with icon and menu:
 
 **Menu Options:**
 - **Show/Hide Shell**: Toggle window visibility
-- **Stop Daemon**: Send command to stop background service
+- **Stop Kernel**: Send command to stop background service
 - **Exit**: Quit the Shell application
 
 **Features:**
@@ -43,7 +43,7 @@ Fixed white box issue with proper transparency:
 ### 5. Executables
 **Built:**
 - `EV3Service.exe` (13.17 MB) - Original name
-- `EV3Daemon.exe` (13.17 MB) - Renamed copy
+ - `EV3Kernel.exe` (13.17 MB) - Renamed copy
 
 **Pending Build:**
 - `EV3Shell.exe` - UI with system tray and transparency
@@ -52,9 +52,9 @@ Fixed white box issue with proper transparency:
 ### 6. Launcher Scripts
 Created convenience scripts:
 
-**start_daemon.bat**: Launch background service only
+**start_kernel.bat**: Launch background kernel only
 **start_shell.bat**: Launch UI only
-**start_ev3.bat**: Launch both (Daemon minimized, then Shell)
+**start_ev3.bat**: Launch both (Kernel minimized, then Shell)
 
 ## How to Use
 
@@ -62,20 +62,20 @@ Created convenience scripts:
 ```batch
 start_ev3.bat
 ```
-This will start both the Daemon and Shell using Python.
+This will start both the Kernel and Shell using Python.
 
 ### Option 2: Individual Components
 ```batch
-REM Start daemon
-start_daemon.bat
+REM Start kernel
+start_kernel.bat
 
 REM Start shell (in separate window)
 start_shell.bat
 ```
 
 ### Option 3: Python Directly
-```batch
-REM Terminal 1: Start daemon
+```bash
+REM Terminal 1: Start kernel
 python main_service.py
 
 REM Terminal 2: Start shell
@@ -86,7 +86,7 @@ python main_ui.py
 
 1. **Launch Shell**: `start_shell.bat` or `python main_ui.py`
 2. **Find Icon**: Look in Windows system tray (hidden icons area, bottom-right)
-3. **Right-click Icon**: See menu with Show/Hide, Stop Daemon, Exit
+3. **Right-click Icon**: See menu with Show/Hide, Stop Kernel, Exit
 4. **Double-click Icon**: Toggle window visibility
 5. **Close Window**: Hides to tray (doesn't exit)
 6. **Exit Application**: Use "Exit" in tray menu
@@ -111,7 +111,7 @@ self.tray_icon.setIcon(icon)
 # Menu with actions
 tray_menu = QMenu()
 tray_menu.addAction("Show/Hide Shell", self.toggle_visibility)
-tray_menu.addAction("Stop Daemon", self.stop_daemon)
+tray_menu.addAction("Stop Kernel", self.stop_kernel)
 tray_menu.addAction("Exit", self.quit_application)
 
 self.tray_icon.setContextMenu(tray_menu)
@@ -163,17 +163,17 @@ def closeEvent(self, event):
    - **Impact**: Falls back to simple test character
    - **Fix**: `pip install pygltflib` (optional)
 
-3. **Service Connection**: Shell shows connection errors if Daemon not running
+3. **Service Connection**: Shell shows connection errors if Kernel not running
    - **Expected**: Shell works in standalone mode
-   - **Fix**: Start Daemon first using `start_daemon.bat`
+   - **Fix**: Start Kernel first using `start_kernel.bat`
 
 ## Files Modified
 
-### New Files:
-- `start_daemon.bat` - Launch daemon
+- ### New Files:
+- `start_kernel.bat` - Launch kernel
 - `start_shell.bat` - Launch shell
 - `start_ev3.bat` - Launch both
-- `dist/EV3Daemon.exe` - Renamed service executable
+- `dist/EV3Kernel.exe` - Renamed service executable
 
 ### Modified Files:
 - `ui/window/companion_window.py` - Added system tray, removed click-through
@@ -186,7 +186,7 @@ def closeEvent(self, event):
 1. **Test system tray**: Run `start_shell.bat` and verify icon appears
 2. **Test transparency**: Check if window is transparent (not white)
 3. **Test menu**: Right-click tray icon, verify all menu items work
-4. **Test daemon control**: Use "Stop Daemon" menu item
+4. **Test kernel control**: Use "Stop Kernel" menu item
 5. **Build executable**: Retry building EV3Shell.exe once tests pass
 
 ## Troubleshooting
@@ -201,10 +201,10 @@ def closeEvent(self, event):
 - Check if GPU supports OpenGL 2.1+
 - Try running as administrator
 
-**"Stop Daemon" not working:**
-- Daemon must be running first
-- Check daemon is accessible via named pipe
-- View daemon logs in `logs/ev3.log`
+**"Stop Kernel" not working:**
+- Kernel must be running first
+- Check kernel is accessible via named pipe
+- View kernel logs in `logs/ev3.log`
 
 **Build failing:**
 - Close all running E.V3 processes

@@ -158,7 +158,7 @@ python install_service.py start
 - `main_ui.py` - UI entry point
 - `start.py` - Quick start script
 - `install_service.py` - Service installer
-- `service/core/service.py` - Main service class
+- `service/Modules/service.py` - Main service class
 - `ui/window/companion_window.py` - Main window
 - `ui/renderer/opengl_renderer.py` - 3D renderer
 - `ui/animations/animation_controller.py` - Animations

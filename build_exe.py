@@ -45,10 +45,10 @@ print("  ✓ Clean")
 print()
 
 # Build service executable
-print("[2/5] Building daemon executable...")
+print("[2/5] Building kernel executable...")
 service_cmd = [
     sys.executable, "-m", "PyInstaller",
-    "--name=Daemon",
+    "--name=Kernel",
     "--onefile",
     "--noconsole",
     "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
@@ -65,9 +65,9 @@ service_cmd = [arg for arg in service_cmd if arg]  # Remove empty strings
 
 try:
     subprocess.check_call(service_cmd)
-    print("  ✓ Daemon executable built")
+    print("  ✓ Kernel executable built")
 except subprocess.CalledProcessError as e:
-    print(f"  ✗ Failed to build daemon: {e}")
+    print(f"  ✗ Failed to build kernel: {e}")
     sys.exit(1)
 print()
 
@@ -106,7 +106,7 @@ dist_folder = Path("dist/EV3_Package")
 dist_folder.mkdir(exist_ok=True)
 
 # Copy executables
-shutil.copy("dist/Daemon.exe", dist_folder / "Daemon.exe")
+    shutil.copy("dist/Kernel.exe", dist_folder / "Kernel.exe")
 shutil.copy("dist/Shell.exe", dist_folder / "Shell.exe")
 print("  ✓ Executables copied")
 
@@ -148,8 +148,8 @@ echo ================================================
 echo E.V3 Privacy-Focused Desktop Companion
 echo ================================================
 echo.
-echo Starting daemon...
-start "E.V3 Daemon" /MIN Daemon.exe
+echo Starting kernel...
+start "E.V3 Kernel" /MIN Kernel.exe
 timeout /t 2 /nobreak >NUL
 echo Starting shell...
 start "E.V3 Shell" Shell.exe
@@ -160,7 +160,7 @@ echo ================================================
 echo.
 echo Your companion should appear in the bottom-right corner.
 echo System tray icon available for control.
-echo Close this window - the daemon will continue running.
+echo Close this window - the kernel will continue running.
 echo.
 pause
 """)
@@ -224,7 +224,7 @@ echo Stopping service...
 net stop EV3CompanionService 2>NUL
 
 echo Uninstalling service...
-Daemon.exe remove
+Kernel.exe remove
 
 echo.
 echo ================================================
@@ -273,7 +273,7 @@ Option 2: Windows Service (Recommended)
 - To uninstall: Uninstall_Service.bat
 
 MANUAL START:
-- Daemon: Daemon.exe
+- Kernel: Kernel.exe
 - Shell: Shell.exe
 
 FEATURES:
@@ -307,7 +307,7 @@ print()
 print(f"Distribution package created in: {dist_folder.absolute()}")
 print()
 print("Contents:")
-print("  - Daemon.exe           (Background daemon)")
+print("  - Kernel.exe           (Background kernel)")
 print("  - Shell.exe            (Shell UI with system tray)")
 print("  - Start_EV3.bat        (Quick launcher)")
 print("  - Install_Service.bat  (Service installer)")

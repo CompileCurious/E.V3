@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Daemon',
+    name='Kernel',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

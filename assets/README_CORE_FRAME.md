@@ -1,4 +1,4 @@
-# Core Frame Vector Image
+# Modules Frame Vector Image
 
 Place your vector robot frame image here as `core_frame.eps` or `core_frame.svg`
 
@@ -20,7 +20,7 @@ The clickable regions are positioned based on the following body parts:
 - **Left Ear** (160, 70, 30x40) - Speech-to-Text selection
 - **Right Eye** (340, 70, 30x40) - Computer Vision selection
 - **Heart** (215, 210, 70x60) - Personality/Character selection
-- **Chest** (200, 280, 100x80) - Core Settings
+- **Chest** (200, 280, 100x80) - Modules Settings
 
 ## Placeholder
 
@@ -31,7 +31,7 @@ Until you upload `core_frame.eps` or `core_frame.svg`, the system will display a
 2. Save it as `assets/core_frame.eps` (or `core_frame.svg`)
 3. If using EPS, ensure Pillow is installed: `pip install pillow`
 4. Restart the application
-5. The Core window will automatically use your custom image
+5. The Modules window will automatically use your custom image
 
 ## Notes
 - EPS files require the Pillow library for rendering

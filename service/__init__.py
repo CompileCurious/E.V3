@@ -1,6 +1,6 @@
 """
 E.V3 - Privacy-Focused Desktop Companion
-Core service package
+Modules service package (formerly 'core')
 """
 
 __version__ = "0.1.0"

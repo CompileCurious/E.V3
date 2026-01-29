@@ -1,9 +1,9 @@
-"""Simple CLI shell to receive daemon output and send messages.
+"""Simple CLI shell to receive kernel output and send messages.
 
 Usage: python ev3_shell.py
 
 Connects to the IPC server and prints `state_update` and `llm_response` messages.
-You can type messages and press Enter to send them as `user_message` to the service.
+You can type messages and press Enter to send them as `user_message` to the kernel.
 Type `exit` or `quit` to end the shell.
 """
 
@@ -53,7 +53,7 @@ class EV3Shell:
             # retry loop in background
             threading.Thread(target=self._retry_connect, daemon=True).start()
         else:
-            logger.info("Connected to service")
+            logger.info("Connected to kernel")
 
         # start input loop
         try:
@@ -74,7 +74,7 @@ class EV3Shell:
                 if cmd.lower() == "dismiss":
                     if self.ipc.connected:
                         self.ipc.send_message("dismiss", {})
-                        print("Sent dismiss to service")
+                        print("Sent dismiss to kernel")
                     else:
                         print("Not connected: cannot dismiss")
                     continue
@@ -99,7 +99,7 @@ class EV3Shell:
                 if self.ipc.connected:
                     self.ipc.send_message("user_message", {"message": cmd})
                 else:
-                    print("Not connected to service; message not sent.")
+                    print("Not connected to kernel; message not sent.")
 
         except KeyboardInterrupt:
             pass
@@ -107,8 +107,8 @@ class EV3Shell:
     def _retry_connect(self):
         while self.running and not self.ipc.connected:
             time.sleep(2)
-            if self.ipc.connect(timeout_ms=2000):
-                logger.info("Connected to service (retry)")
+                if self.ipc.connect(timeout_ms=2000):
+                logger.info("Connected to kernel (retry)")
                 break
 
     def stop(self):
