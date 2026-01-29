@@ -5,13 +5,29 @@ Connects to background service via IPC and displays 3D companion
 
 import sys
 import yaml
+import win32event
+import win32api
+from winerror import ERROR_ALREADY_EXISTS
 from pathlib import Path
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import QTimer
 from loguru import logger
 
 from ui.window import CompanionWindow
 from ipc import IPCClient
+
+
+def check_single_instance():
+    """Ensure only one instance of the Shell is running"""
+    mutex_name = "Global\\EV3ShellMutex"
+    mutex = win32event.CreateMutex(None, True, mutex_name)  # Changed to True to immediately acquire
+    last_error = win32api.GetLastError()
+    
+    if last_error == ERROR_ALREADY_EXISTS:
+        logger.warning("E.V3 Shell is already running. Exiting.")
+        return None  # Return None instead of False
+    
+    return mutex  # Return the mutex handle to keep it alive
 
 
 class EV3UIApplication:
@@ -129,8 +145,8 @@ class EV3UIApplication:
         """Run the application"""
         logger.info("Starting E.V3 UI...")
         
-        # Show window
-        self.window.show()
+        # Start with window hidden - use system tray to show
+        # self.window.show()
         
         # Run Qt event loop
         sys.exit(self.app.exec())
@@ -152,12 +168,22 @@ class EV3UIApplication:
         """Handle LLM response from service"""
         message = data.get("message", "")
         
-        logger.info(f"LLM response: {message}")
+        logger.info(f"LLM response received: {message[:100]}...")
         
-        # Display in chat window if open
-        if self.window:
-            self.window.display_chat_response(message)
-            self.window.show_message(message)
+        # Dispatch UI update onto the Qt main thread to avoid crashes
+        from PySide6.QtCore import QTimer
+
+        def _deliver():
+            try:
+                if self.window:
+                    logger.info("Forwarding response to chat window")
+                    self.window.display_chat_response(message)
+                else:
+                    logger.warning("No window available to display response")
+            except Exception as e:
+                logger.error(f"Error delivering LLM response to UI: {e}", exc_info=True)
+
+        QTimer.singleShot(0, _deliver)
     
     def _send_message_via_ipc(self, message: str):
         """Send user message to kernel via IPC"""
@@ -182,6 +208,20 @@ class EV3UIApplication:
 
 def main():
     """Main entry point"""
+    # Check for single instance before any UI initialization and keep mutex handle
+    mutex = check_single_instance()
+    if mutex is None:
+        # Show message box if possible
+        app = QApplication(sys.argv)
+        QMessageBox.warning(
+            None,
+            "E.V3 Shell Already Running",
+            "E.V3 Shell is already running.\n\nPlease check your system tray for the E.V3 icon.",
+            QMessageBox.Ok
+        )
+        logger.warning("Exiting - Shell instance already running")
+        sys.exit(1)
+    
     logger.info("Starting E.V3 Desktop Companion UI")
     
     # Create and run application

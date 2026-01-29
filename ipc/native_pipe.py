@@ -9,6 +9,7 @@ import win32event
 import pywintypes
 import json
 import threading
+import time
 from typing import Optional, Callable, Dict, Any
 from queue import Queue
 from loguru import logger
@@ -112,30 +113,43 @@ class IPCServer:
         """Handle client communication"""
         while self.running:
             try:
-                # Read from client
-                result, data = win32file.ReadFile(self.pipe_handle, self.buffer_size)
-                if data:
-                    message = json.loads(data.decode('utf-8'))
-                    self._process_message(message)
+                # Check if data is available without blocking
+                try:
+                    # Peek to see if there's data
+                    result = win32pipe.PeekNamedPipe(self.pipe_handle, 0)
+                    if result[1] > 0:  # bytes available
+                        # Read from client
+                        result, data = win32file.ReadFile(self.pipe_handle, self.buffer_size)
+                        if data:
+                            message = json.loads(data.decode('utf-8'))
+                            self._process_message(message)
+                except pywintypes.error as e:
+                    # Check if it's a disconnect
+                    if e.winerror == 109:  # ERROR_BROKEN_PIPE
+                        logger.info("Client disconnected")
+                        break
+                    # Otherwise continue - might be no data available
                 
                 # Send queued messages to client
                 while not self._outbound_queue.empty():
                     msg = self._outbound_queue.get()
                     self._send_to_client(msg)
+                
+                # Small sleep to avoid busy loop
+                time.sleep(0.01)
                     
-            except pywintypes.error as e:
-                # Client disconnected
-                logger.info("Client disconnected")
-                break
             except Exception as e:
-                logger.error(f"Client handling error: {e}")
+                logger.error(f"Client handling error: {e}", exc_info=True)
                 break
     
     def _send_to_client(self, message: Dict[str, Any]):
         """Send message to client"""
         try:
+            msg_type = message.get("type", "unknown")
+            logger.info(f"Sending message to client: type='{msg_type}'")
             data = json.dumps(message).encode('utf-8')
             win32file.WriteFile(self.pipe_handle, data)
+            logger.info(f"Message sent successfully")
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
     
@@ -167,6 +181,7 @@ class IPCClient:
         self._message_handlers: Dict[str, Callable] = {}
         self._thread: Optional[threading.Thread] = None
         self._running = False
+        self._outbound_queue: Queue = Queue()  # Queue for messages to send
     
     def register_handler(self, message_type: str, handler: Callable):
         """Register a handler for a specific message type"""
@@ -226,36 +241,51 @@ class IPCClient:
         logger.info("Disconnected from IPC server")
     
     def send_message(self, message_type: str, data: Dict[str, Any]):
-        """Send message to server"""
-        if not self.connected:
-            logger.warning("Not connected to server")
-            return
-        
-        try:
-            message = {
-                "type": message_type,
-                "data": data
-            }
-            msg_data = json.dumps(message).encode('utf-8')
-            win32file.WriteFile(self.pipe_handle, msg_data)
-        except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+        """Queue a message to send to server"""
+        message = {
+            "type": message_type,
+            "data": data
+        }
+        self._outbound_queue.put(message)
     
     def _listen(self):
-        """Listen for messages from server"""
+        """Listen for messages from server and send queued outbound messages"""
         while self._running and self.connected:
             try:
-                result, data = win32file.ReadFile(self.pipe_handle, self.buffer_size)
-                if data:
-                    message = json.loads(data.decode('utf-8'))
-                    self._process_message(message)
-            except pywintypes.error:
-                # Connection lost
-                logger.info("Connection to server lost")
+                # Check for incoming messages (non-blocking peek)
+                try:
+                    result = win32pipe.PeekNamedPipe(self.pipe_handle, 0)
+                    if result[1] > 0:  # bytes available
+                        result, data = win32file.ReadFile(self.pipe_handle, self.buffer_size)
+                        if data:
+                            message = json.loads(data.decode('utf-8'))
+                            logger.info(f"Client received message: {message.get('type')}")
+                            self._process_message(message)
+                except pywintypes.error as e:
+                    if e.winerror == 109:  # ERROR_BROKEN_PIPE
+                        logger.info("Connection to server lost")
+                        self.connected = False
+                        break
+                
+                # Send queued outbound messages
+                while not self._outbound_queue.empty() and self.connected:
+                    msg = self._outbound_queue.get()
+                    try:
+                        msg_data = json.dumps(msg).encode('utf-8')
+                        win32file.WriteFile(self.pipe_handle, msg_data)
+                        logger.debug(f"Client sent message: {msg.get('type')}")
+                    except Exception as e:
+                        logger.error(f"Failed to send message: {e}")
+                        self.connected = False
+                        break
+                
+                # Small sleep to avoid busy loop
+                time.sleep(0.01)
+                
+            except Exception as e:
+                logger.error(f"Listen error: {e}", exc_info=True)
                 self.connected = False
                 break
-            except Exception as e:
-                logger.error(f"Listen error: {e}")
     
     def _process_message(self, message: Dict[str, Any]):
         """Process received message"""
@@ -263,9 +293,15 @@ class IPCClient:
             msg_type = message.get("type")
             msg_data = message.get("data", {})
             
+            logger.info(f"Processing message type '{msg_type}'")
+            
             if msg_type in self._message_handlers:
-                self._message_handlers[msg_type](msg_data)
+                try:
+                    self._message_handlers[msg_type](msg_data)
+                    logger.info(f"Handler for '{msg_type}' completed")
+                except Exception as e:
+                    logger.error(f"Error in handler for '{msg_type}': {e}", exc_info=True)
             else:
-                logger.debug(f"No handler for message type: {msg_type}")
+                logger.warning(f"No handler registered for message type: {msg_type}")
         except Exception as e:
-            logger.error(f"Error processing message: {e}")
+            logger.error(f"Error processing message: {e}", exc_info=True)

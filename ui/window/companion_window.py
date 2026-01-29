@@ -28,6 +28,9 @@ class CompanionWindow(QMainWindow):
     - Anchored to bottom-right above taskbar
     """
     
+    # Signal to safely invoke hotkey actions on GUI thread
+    hotkey_triggered = Signal()
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__()
         
@@ -37,6 +40,9 @@ class CompanionWindow(QMainWindow):
         self.chat_window = None
         self.hotkey_enabled = True
         self.hotkey_combination = "win+c"  # Default hotkey
+        
+        # Connect hotkey signal to handler (ensures GUI thread execution)
+        self.hotkey_triggered.connect(self._handle_hotkey_on_gui_thread)
         
         # Setup window properties
         self._setup_window()
@@ -131,14 +137,14 @@ class CompanionWindow(QMainWindow):
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
         self.tray_icon.setIcon(icon)
         
-        # Create main menu
-        tray_menu = QMenu()
+        # Create main menu (parent it to self)
+        tray_menu = QMenu(self)
         
         # === SHELL SUBMENU ===
         shell_menu = QMenu("Shell", tray_menu)
         
         # Show/Hide action
-        self.show_hide_action = QAction("Hide Shell", self)
+        self.show_hide_action = QAction("Show Shell", self)
         self.show_hide_action.triggered.connect(self.toggle_visibility)
         shell_menu.addAction(self.show_hide_action)
         
@@ -384,8 +390,12 @@ class CompanionWindow(QMainWindow):
         exit_action.triggered.connect(self.quit_application)
         tray_menu.addAction(exit_action)
         
-        self.tray_icon.setContextMenu(tray_menu)
+        # Store menu as member variable to prevent garbage collection
+        self.tray_menu = tray_menu
+        
+        self.tray_icon.setContextMenu(self.tray_menu)
         self.tray_icon.setToolTip("E.V3 Shell")
+        self.tray_icon.setVisible(True)  # Ensure icon is always visible
         
         # Double-click to show/hide
         self.tray_icon.activated.connect(self.tray_icon_activated)
@@ -960,12 +970,17 @@ class CompanionWindow(QMainWindow):
             logger.error(f"Failed to register global hotkey: {e}")
     
     def _on_hotkey_pressed(self):
-        """Handle hotkey press - show window and open chat"""
+        """Handle hotkey press - emit signal to run on GUI thread"""
         if not self.hotkey_enabled:
             return
         
         logger.info("Hotkey pressed - summoning character and chat")
         
+        # Emit signal to handle on GUI thread (thread-safe)
+        self.hotkey_triggered.emit()
+    
+    def _handle_hotkey_on_gui_thread(self):
+        """Handle hotkey actions on the GUI thread (called via signal)"""
         # Show window if hidden
         if not self.isVisible():
             self.show()
@@ -993,11 +1008,52 @@ class CompanionWindow(QMainWindow):
         chat_pos.setX(chat_pos.x() - self.chat_window.width() - 10)
         self.chat_window.move(chat_pos)
         
+        # Show and activate window to get focus
         self.chat_window.show()
         self.chat_window.raise_()
-        self.chat_window.focus_input()
+        self.chat_window.activateWindow()
+        
+        # Use timer to ensure focus after window is fully shown
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(100, lambda: self._set_chat_focus())
         
         logger.info("Chat window opened")
+    
+    def _set_chat_focus(self):
+        """Set focus to chat window - called after short delay"""
+        try:
+            if self.chat_window:
+                # Get window handle
+                hwnd = int(self.chat_window.winId())
+                
+                # Windows API focus forcing
+                import win32gui
+                import win32process
+                import win32api
+                
+                # Attach to foreground thread to allow setting focus
+                foreground_hwnd = win32gui.GetForegroundWindow()
+                foreground_thread = win32process.GetWindowThreadProcessId(foreground_hwnd)[0]
+                current_thread = win32api.GetCurrentThreadId()
+                
+                if foreground_thread != current_thread:
+                    win32process.AttachThreadInput(foreground_thread, current_thread, True)
+                
+                # Force to foreground
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.SetFocus(hwnd)
+                
+                # Detach
+                if foreground_thread != current_thread:
+                    win32process.AttachThreadInput(foreground_thread, current_thread, False)
+                
+                # Qt focus
+                self.chat_window.activateWindow()
+                self.chat_window.focus_input()
+                
+                logger.info("Focus set to chat window")
+        except Exception as e:
+            logger.error(f"Error setting focus: {e}", exc_info=True)
     
     def send_chat_message(self, message: str):
         """Send chat message to kernel via IPC"""
@@ -1183,6 +1239,7 @@ class ChatWindow(QDialog):
     def focus_input(self):
         """Focus the input field"""
         self.input_field.setFocus()
+        self.input_field.activateWindow()
     
     def closeEvent(self, event):
         """Handle window close - hide instead of destroy"""

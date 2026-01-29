@@ -18,14 +18,14 @@ from modules import StateModule, EventModule, LLMModule, CalendarModule, IPCModu
 def check_single_instance():
     """Ensure only one instance of the service is running"""
     mutex_name = "Global\\EV3ServiceMutex"
-    mutex = win32event.CreateMutex(None, False, mutex_name)
+    mutex = win32event.CreateMutex(None, True, mutex_name)  # Changed to True to immediately acquire
     last_error = win32api.GetLastError()
     
     if last_error == ERROR_ALREADY_EXISTS:
         logger.warning("E.V3 Service is already running. Exiting.")
-        return False
+        return None  # Return None instead of False
     
-    return True
+    return mutex  # Return the mutex handle to keep it alive
 
 
 def load_config(config_path: str = "config/config.yaml"):
@@ -76,8 +76,9 @@ def main():
     """Main entry point - microkernel initialization"""
     logger.info("Starting E.V3 Privacy-Focused Desktop Companion (Microkernel Architecture)")
     
-    # Check for single instance
-    if not check_single_instance():
+    # Check for single instance and keep mutex handle
+    mutex = check_single_instance()
+    if mutex is None:
         print("E.V3 Service is already running.")
         sys.exit(1)
     

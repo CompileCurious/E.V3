@@ -1,0 +1,8 @@
+allowed_folders:
+- C:/Users/Administrator/Documents/GitHub/E.V3/models
+calendar: read
+filesystem: scoped
+llm: local
+llm_logging: false
+network: local
+sysinfo: basic

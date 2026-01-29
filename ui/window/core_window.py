@@ -255,7 +255,7 @@ class ModulesWindow(QMainWindow):
                     if not pixmap.isNull():
                         # Scale to a reasonable size
                         pixmap = pixmap.scaled(480, 580, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                            logger.info(f"Loaded PNG modules frame from {img_path}")
+                        logger.info(f"Loaded PNG modules frame from {img_path}")
                         break
                 
                 elif img_path.endswith('.svg'):

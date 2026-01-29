@@ -151,16 +151,32 @@ class LLMModule(Module):
         if not message:
             return
         
+        logger.info(f"Processing user query: {message[:50]}...")
+        
         # Choose LLM provider
         llm = self.external_llm if (use_external and self.external_llm) else self.local_llm
         
         if not llm:
-            response = "LLM not available"
+            response = (
+                "⚠️ LLM not configured.\n\n"
+                "To use the AI assistant, you need to:\n"
+                "1. Install llama-cpp-python: pip install llama-cpp-python\n"
+                "2. Download Mistral 7B model from HuggingFace\n"
+                "3. Place it in models/llm/ folder\n\n"
+                "See models/MODEL_SETUP.md for detailed instructions."
+            )
+            logger.warning("LLM not available - no model configured")
         else:
-            prompt = f"[INST] {message} [/INST]"
-            response = llm.generate(prompt, max_tokens=256)
+            try:
+                prompt = f"[INST] {message} [/INST]"
+                response = llm.generate(prompt, max_tokens=256)
+                logger.info(f"Generated response: {response[:50]}...")
+            except Exception as e:
+                response = f"Error generating response: {str(e)}"
+                logger.error(f"LLM generation error: {e}")
         
         # Send response via IPC
+        logger.info("Sending LLM response via IPC")
         self.kernel.emit_event(self.name, "ipc.send_message", {
             "type": "llm_response",
             "data": {"message": response}

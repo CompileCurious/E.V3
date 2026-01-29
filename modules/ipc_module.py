@@ -102,8 +102,11 @@ class IPCModule(Module):
                 # Forward message to UI
                 msg_type = event_data.get("type", "message")
                 msg_data = event_data.get("data", {})
+                logger.info(f"IPC module forwarding message type '{msg_type}' to clients")
                 if self.server:
                     self.server.send_message(msg_type, msg_data)
+                else:
+                    logger.warning("No IPC server available to send message")
                 
         except Exception as e:
             logger.error(f"Error handling IPC event '{event_type}': {e}")
