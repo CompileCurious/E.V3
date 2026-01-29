@@ -85,6 +85,7 @@ ui_cmd = [
     "--hidden-import=PySide6.QtWidgets",
     "--hidden-import=PySide6.QtOpenGL",
     "--hidden-import=PySide6.QtOpenGLWidgets",
+        "--hidden-import=ui.window.companion_window",
     "--hidden-import=OpenGL",
     "--hidden-import=OpenGL.GL",
     "--hidden-import=OpenGL.GLU",
@@ -106,7 +107,7 @@ dist_folder = Path("dist/EV3_Package")
 dist_folder.mkdir(exist_ok=True)
 
 # Copy executables
-    shutil.copy("dist/Kernel.exe", dist_folder / "Kernel.exe")
+shutil.copy("dist/Kernel.exe", dist_folder / "Kernel.exe")
 shutil.copy("dist/Shell.exe", dist_folder / "Shell.exe")
 print("  ✓ Executables copied")
 
