@@ -1,17 +1,19 @@
 # E.V3 - Privacy-Focused Desktop Companion
 
+> **⚠️ ALPHA STATUS**: E.V3 is currently in active development. Core features are functional, but many exciting features are still in progress. Expect frequent updates and improvements!
+
 A privacy-first desktop companion with a 3D animated character, built on a **microkernel architecture** with isolated capability modules.
 
 ![E.V3 Screenshot](assets/ev3_screenshot.png)
-*E.V3 with VRM character rendering and chat interface*
+*E.V3 with custom VRM character rendering and chat interface*
 
-## Features
+## ✨ Features
 
 - **Privacy First**: No data scraping, no raw logs sent, all processing local by default
 - **Microkernel Architecture**: Modular design with permission boundaries and event-based communication
 - **Native Windows Kernel**: Runs in background, monitors system events
 - **Interactive Shell**: System tray control with Show/Hide, Stop Kernel, Exit menu
-- **3D Animated Character**: Full VRM model support with texture rendering and proper positioning
+- **Fully Customizable Character**: Bring your own VRM/GLTF/GLB model - no default character included
 - **Dual LLM Modes**: 
   - **Fast Mode**: Phi-3-mini (2.3GB) for quick responses
   - **Deep Thinking Mode**: Mistral 7B for complex reasoning
@@ -23,6 +25,19 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 - **System Tray Control**: Full control via system tray icon
 - **Native IPC**: Fast communication between kernel and shell via named pipes
 - **Module Configuration UI**: File picker interface for easy model selection
+
+## 🚧 Roadmap (Coming Soon)
+
+- **Voice Commands**: Wake word detection and natural voice interaction
+- **Advanced Animations**: Full bone rigging, lip sync, and emotional expressions
+- **Plugin System**: Third-party module support with sandboxing
+- **Multi-Monitor**: Character can move between screens
+- **Smart Context**: Learn from your usage patterns (all local)
+- **Enhanced TTS**: Real-time voice cloning and emotion modulation
+- **Mobile Companion**: Sync with phone for notifications
+- **Custom Gestures**: Teach your character custom animations
+- **Screen Awareness**: Character reacts to what's on screen
+- **And much more...**
 
 ## Architecture
 
@@ -107,6 +122,16 @@ E.V3/
 └── main_ui.py           # Shell entrypoint
 ```
 
+## 📚 Quick Links
+
+- **[FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md)** - 🚀 **START HERE!** Complete first-time setup guide
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - How to use E.V3 daily
+- **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - Detailed LLM and character model setup
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture and design
+- **[docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md)** - TTS and voice system setup
+- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building standalone executables
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributing and development workflow
+
 ## Requirements
 
 - Python 3.13+ (Python 3.10+ supported)
@@ -137,7 +162,7 @@ pip install llama-cpp-python
 
 #### 1. LLM Models (Required for AI features)
 
-E.V3 supports **dual LLM modes** for different use cases:
+E.V3 supports **dual LLM modes** for different use cases. **Models are NOT included** - you download them separately for privacy and flexibility.
 
 **Fast Mode (Phi-3-mini)**:
 ```bash
@@ -154,25 +179,43 @@ python tools/download_phi3.py
 - Higher temperature (0.8) for creativity
 - Best for complex reasoning, detailed explanations
 
-Both models should be in `models/llm/` directory. Configure via:
-- **UI Method**: Use Modules menu (accessible via system tray) with file pickers
+Both models should be placed in `models/llm/` directory. Configure via:
+- **UI Method**: System tray → Modules → Select LLM Models (file pickers)
 - **Manual Method**: Edit `config/config.yaml` to set `fast_model` and `deep_model` paths
 
-#### 2. 3D Character Model (Included)
+**Privacy Note**: LLM models are stored locally only and NOT tracked in git. Your models stay on your machine.
 
-- **Default Model**: `E.V3.vrm` included in `models/character/`
-- Fully textured VRM model with proper rendering
-- **Custom Models**: Add your own VRoid (.vrm) or Blender (.glb/.gltf) models
-- Configure via Modules UI or `config/config.yaml`
+#### 2. 3D Character Model (Required - Fully Customizable!)
 
-**Model Configuration**:
+**E.V3 does NOT include a default character** - you bring your own! This ensures full creative freedom and privacy.
+
+**Supported Formats**:
+- **VRM** (.vrm) - VRoid Studio models (recommended)
+- **GLTF/GLB** (.gltf, .glb) - Blender or other 3D tools
+- **FBX/OBJ** - Additional format support
+
+**Where to Get Models**:
+- **VRoid Studio**: Create your own at https://vroid.com/en/studio
+- **VRoid Hub**: Download pre-made at https://hub.vroid.com/
+- **Ready Player Me**: https://readyplayer.me/
+- **Sketchfab**: https://sketchfab.com/
+- **Blender**: Create custom characters
+
+**Setup**:
+1. Place your character file in `models/character/`
+2. Configure via:
+   - **UI Method**: System tray → Modules → Select Character Model
+   - **Manual Method**: Edit `config/config.yaml`
+
 ```yaml
 ui:
   model:
-    model_path: "models/character/E.V3.vrm"
+    model_path: "models/character/YOUR_CUSTOM_MODEL.vrm"
     scale: 0.6              # Adjust size (0.5-1.0 recommended)
     position: [0, -1.2, 0]  # [x, y, z] - negative Y moves down
 ```
+
+**Privacy Note**: Character models are stored locally only and NOT tracked in git. Your character is yours alone!
 
 #### 3. Voice/Speech Model (Optional)
 
@@ -366,10 +409,18 @@ See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
 ## Privacy & Security
 
 ### Local-First Design
-- All AI processing happens on your machine by default
-- No analytics, telemetry, or tracking
+- **All AI processing happens on your machine by default**
+- **No analytics, telemetry, or tracking**
+- **Models are NOT included in repo** - you download and control them
+- **Character models are yours alone** - stored locally, never shared
 - Event data is anonymized (no usernames, paths, IPs)
 - Configuration and state stored locally only
+
+### Modular & Customizable
+- **Bring your own character** - full creative freedom
+- **Choose your LLM models** - optimize for your hardware
+- **Hot-swappable components** - change models without restart
+- **No vendor lock-in** - all open standards (VRM, GLTF, GGUF)
 
 ### Permission Model
 - Each module declares required permissions
@@ -461,10 +512,18 @@ python tests/test_components.py
 - Verify model file exists at configured path
 
 ### VRM model not rendering
+- **No default model included** - ensure you've added your own character to `models/character/`
 - Ensure model path is correct in config
 - Check logs for texture loading errors
 - Verify model scale and position settings
 - Try adjusting `scale` (0.5-1.0) and `position` Y value (-2.0 to 0)
+- Test with different VRM/GLB models to isolate issues
+
+### Missing models
+- **Models are NOT included in the repository**
+- Download LLM models separately (see Model Setup section)
+- Add your own character model (see Character Model section)
+- Models are stored locally only for privacy
 
 ### Module failures
 - Check `logs/ev3.log` for module-specific errors
@@ -480,6 +539,7 @@ E.V3 is free and open source for noncommercial use. You can:
 - ✅ Study and modify the code
 - ✅ Share it with others
 - ✅ Create derivatives for noncommercial purposes
+- ✅ Use your own models and characters (they're yours!)
 
 You **cannot**:
 - ❌ Use it for commercial purposes without permission
@@ -488,4 +548,18 @@ You **cannot**:
 See [LICENSE.txt](LICENSE.txt) for full terms.
 
 For commercial licensing inquiries, please contact the project maintainers.
+
+---
+
+## 🎨 About Customization
+
+E.V3 is designed to be **fully modular and customizable**:
+
+- **Your Character, Your Way**: No default character model means total creative freedom
+- **Your Models, Your Privacy**: All LLM models stay on your machine, never shared
+- **Open Standards**: VRM, GLTF, GGUF - industry standard formats
+- **Hot-Swappable**: Change characters and models on the fly via UI
+- **Community Driven**: Share tips and tricks (not your actual models!)
+
+**This is Alpha software** - we're actively developing new features and welcome feedback! Check the Roadmap section for what's coming next.
 

@@ -1,6 +1,9 @@
-# Ignore all files inside models/ subfolders (keep top-level docs)
+# Ignore all files inside models/ subfolders (keep documentation)
 /models/*
 !/models/*.md
+!/models/character/
+/models/character/*
+!/models/character/README.md
 
 # Ignore common model binary formats under models
 /models/**/*.gguf
@@ -9,10 +12,15 @@
 /models/**/*.pt
 /models/**/*.zip
 
-# Ignore character models (too large for git)
+# Ignore ALL character models (user-customizable, not part of repo)
 /models/character/*.vrm
 /models/character/*.glb
 /models/character/*.gltf
+/models/character/*.fbx
+/models/character/*.obj
+/models/character/E.V3.vrm
+# But allow documentation
+!/models/character/README.md
 
 # Ignore speech model files
 /models/speech/**/*.onnx
@@ -21,8 +29,13 @@
 /models/speech/**/*.mp3
 /models/speech/**/*.ogg
 
-# Explicitly ignore the llm folder
+# Explicitly ignore the entire llm folder (models are user-downloaded)
 /models/llm/
+/models/llm/*.gguf
+/models/llm/*.bin
+/models/llm/*.safetensors
+/models/llm/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+/models/llm/Phi-3-mini-4k-instruct-q4.gguf
 # Python
 __pycache__/
 *.py[cod]
@@ -65,9 +78,13 @@ ENV/
 logs/
 *.log
 
-# Models (too large for git)
+# Models (too large for git, user-customizable)
+# LLM models are downloaded separately
+# Character models are fully customizable
 models/llm/*.gguf
 models/llm/*.bin
+models/character/*.vrm
+models/character/*.glb
 
 # Credentials
 config/credentials/

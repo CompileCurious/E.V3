@@ -1,10 +1,24 @@
 # E.V3 Model Setup Guide
 
-## Downloading the Local LLM Model
+> **Important**: E.V3 does NOT include LLM or character models. All models are downloaded/added separately for privacy and modularity. Models are stored locally only and NOT tracked in git.
 
-E.V3 uses Mistral 7B Instruct for local AI processing. This ensures privacy by keeping all AI processing on your machine.
+## 🤖 Downloading Local LLM Models
 
-### Download Mistral 7B Quantized Model
+E.V3 supports dual LLM modes for different use cases. Both models are **required** for full functionality.
+
+### Fast Mode: Phi-3-mini (Recommended for Quick Responses)
+
+**Automated Download**:
+```bash
+python tools/download_phi3.py
+```
+
+**Manual Download**:
+1. Visit: https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf
+2. Download: `Phi-3-mini-4k-instruct-q4.gguf` (~2.3 GB)
+3. Place in: `models/llm/`
+
+### Deep Thinking Mode: Mistral 7B (For Complex Reasoning)
 
 1. Visit: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF
 
@@ -21,7 +35,11 @@ E.V3 uses Mistral 7B Instruct for local AI processing. This ensures privacy by k
 - **Q5_K_M** (~5.2 GB) - Higher quality
 - **Q8_0** (~7.7 GB) - Highest quality, largest size
 
-## 3D Character Model Setup
+**Privacy Note**: Models stay on your machine and are never tracked in version control.
+
+## 🎨 3D Character Model Setup
+
+**E.V3 does NOT include a default character** - you bring your own! This ensures full creative freedom and privacy.
 
 E.V3 supports VRoid Studio models (.vrm) and standard 3D formats (.glb, .gltf).
 

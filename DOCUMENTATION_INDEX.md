@@ -1,28 +1,45 @@
 # E.V3 Documentation Index
 
+> **⚠️ ALPHA STATUS**: E.V3 is in active development. Documentation is evolving as features are added.
+
 ## 📚 Quick Navigation
 
 ### 🚀 Getting Started
-1. **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup guide
+1. **[FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md)** - ⭐ **START HERE!** First-time setup guide
+   - Prerequisites and installation
+   - Model downloads (LLM and character)
+   - Initial configuration
+   - Troubleshooting tips
+
+2. **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick reference
    - Installation steps
    - Basic usage
-   - First-time configuration
+   - Quick configuration
 
-2. **[README.md](README.md)** - Project overview
-   - Features
-   - Architecture
+3. **[README.md](README.md)** - Project overview
+   - Features and roadmap
+   - Architecture overview
    - Requirements
+   - Alpha status and upcoming features
 
 ### 📖 User Documentation
-3. **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete user guide
+4. **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete user guide
    - Detailed features
    - Customization options
+   - Daily usage patterns
    - Troubleshooting
 
-4. **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - Model setup
-   - LLM download instructions
-   - 3D character setup
-   - Model resources
+5. **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - Model setup reference
+   - Dual LLM mode setup (Phi-3 and Mistral)
+   - Character model sources and formats
+   - Model customization
+   - Privacy notes
+
+6. **[models/character/README.md](models/character/README.md)** - Character customization
+   - Supported formats
+   - Where to get models
+   - Configuration options
+   - Privacy and local storage
 
 ### 🔧 Technical Documentation
 5. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Technical overview
