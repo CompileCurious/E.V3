@@ -35,6 +35,8 @@ class Bone:
         self.world_matrix = np.eye(4, dtype=np.float32)
         self.inverse_bind_matrix = np.eye(4, dtype=np.float32)
         self.children = []
+        # Animation rotation - applied relative to bind pose
+        self.animation_rotation = None  # Quaternion or None for no animation
     
     def calculate_transform(self, parent_matrix=None):
         """Calculate transformation matrix from position, rotation, scale"""
@@ -225,7 +227,8 @@ class Model3D:
         self.position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         self.rotation = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         self.scale = 1.0
-        self.joint_indices = []  # Maps skin joints to bone indices
+        self.joint_indices = []  # Maps joint index -> node index (from skin.joints)
+        self.inverse_bind_matrices = None  # IBMs indexed by joint index
         self.skinning_enabled = True  # Enable GPU skinning by default
         self.bones_initialized = False
         
@@ -336,65 +339,232 @@ class Model3D:
                 self._update_bone_hierarchy(child_idx, bone.world_matrix)
     
     def _apply_skinning(self):
-        """Apply bone transforms to mesh vertices (EXPENSIVE - use sparingly)"""
-        if not self.bones:
+        """Apply bone transforms to mesh vertices (CPU skinning)
+        
+        glTF skinning formula: skinned = sum(weight * jointMatrix * IBM * vertex)
+        Where jointMatrix is the CURRENT world transform of the joint.
+        
+        For proper hierarchical skinning:
+        1. Compute animated world transform for each joint (respecting hierarchy)
+        2. Skin matrix = animated_world @ IBM
+        """
+        if not self.bones or not self.joint_indices:
+            logger.warning("Cannot apply skinning: no bones or joint mapping")
             return
         
-        for mesh in self.meshes:
+        if not hasattr(self, 'inverse_bind_matrices') or self.inverse_bind_matrices is None:
+            logger.warning("Cannot apply skinning: no inverse bind matrices")
+            return
+        
+        logger.info(f"Applying CPU skinning with {len(self.joint_indices)} joints")
+        
+        # Step 1: Compute animated world transforms for all joints (hierarchically)
+        # Start from bind pose (identity) and apply animation rotations
+        animated_world_transforms = {}  # joint_idx -> 4x4 matrix
+        
+        # Build joint hierarchy map
+        joint_to_node = {j: self.joint_indices[j] for j in range(len(self.joint_indices))}
+        node_to_joint = {v: k for k, v in joint_to_node.items()}
+        
+        # Get bind pose transforms from IBM
+        bind_transforms = {}  # joint_idx -> bind world transform
+        for j in range(len(self.joint_indices)):
+            ibm = self.inverse_bind_matrices[j].T  # Transpose for numpy
+            bind_transforms[j] = np.linalg.inv(ibm)
+        
+        def get_parent_joint(joint_idx):
+            """Get parent joint index, or -1 if no parent"""
+            node_idx = self.joint_indices[joint_idx]
+            if node_idx < len(self.bones):
+                parent_node = self.bones[node_idx].parent_idx
+                if parent_node in node_to_joint:
+                    return node_to_joint[parent_node]
+            return -1
+        
+        def compute_animated_world(joint_idx, visited=None):
+            """Recursively compute animated world transform"""
+            if visited is None:
+                visited = set()
+            if joint_idx in visited:
+                return np.eye(4, dtype=np.float32)
+            visited.add(joint_idx)
+            
+            if joint_idx in animated_world_transforms:
+                return animated_world_transforms[joint_idx]
+            
+            node_idx = self.joint_indices[joint_idx]
+            bone = self.bones[node_idx] if node_idx < len(self.bones) else None
+            
+            # Get this joint's local animation rotation (if any)
+            local_anim = np.eye(4, dtype=np.float32)
+            if bone and hasattr(bone, 'animation_rotation') and bone.animation_rotation is not None:
+                local_anim = Bone._trs_to_matrix(
+                    np.zeros(3, dtype=np.float32),
+                    bone.animation_rotation,
+                    np.ones(3, dtype=np.float32)
+                )
+            
+            # Get parent's animated world transform
+            parent_joint = get_parent_joint(joint_idx)
+            if parent_joint >= 0:
+                parent_world = compute_animated_world(parent_joint, visited)
+                # Get bind pose local transform (relative to parent)
+                parent_bind = bind_transforms.get(parent_joint, np.eye(4))
+                this_bind = bind_transforms.get(joint_idx, np.eye(4))
+                
+                # Local bind = inv(parent_bind) @ this_bind
+                local_bind = np.linalg.inv(parent_bind) @ this_bind
+                
+                # Animated world = parent_world @ local_bind @ local_anim
+                animated_world = parent_world @ local_bind @ local_anim
+            else:
+                # Root joint - world = bind @ local_anim
+                animated_world = bind_transforms.get(joint_idx, np.eye(4)) @ local_anim
+            
+            animated_world_transforms[joint_idx] = animated_world.astype(np.float32)
+            return animated_world_transforms[joint_idx]
+        
+        # Compute animated world transforms for all joints
+        for j in range(len(self.joint_indices)):
+            compute_animated_world(j)
+        
+        # Step 2: Compute skin matrices
+        skin_matrices = []
+        animated_count = 0
+        for j in range(len(self.joint_indices)):
+            ibm = self.inverse_bind_matrices[j].T
+            animated_world = animated_world_transforms.get(j, bind_transforms[j])
+            
+            # Skin matrix = animated_world @ IBM
+            skin_matrix = animated_world @ ibm
+            
+            # Check if this joint is animated
+            node_idx = self.joint_indices[j]
+            if node_idx < len(self.bones):
+                bone = self.bones[node_idx]
+                if hasattr(bone, 'animation_rotation') and bone.animation_rotation is not None:
+                    animated_count += 1
+            
+            skin_matrices.append(skin_matrix.astype(np.float32))
+        
+        logger.info(f"Computed skin matrices for {len(skin_matrices)} joints, {animated_count} directly animated")
+        
+        # Debug: Check which vertices are weighted to arm joints
+        arm_joints = [j for j in range(len(self.joint_indices)) 
+                     if j < len(skin_matrices) and not np.allclose(skin_matrices[j], np.eye(4), atol=0.01)]
+        logger.info(f"Non-identity skin matrices at joints: {arm_joints}")
+        
+        # Log vertices weighted to arm joints and check if they're transforming
+        for mesh_idx, mesh in enumerate(self.meshes):
+            if len(mesh.bone_indices) > 0:
+                arm_vert_count = 0
+                for arm_j in arm_joints:
+                    # Find vertices with this joint as primary influence
+                    for v_idx in range(len(mesh.bone_indices)):
+                        if mesh.bone_indices[v_idx, 0] == arm_j:
+                            arm_vert_count += 1
+                            if arm_vert_count <= 2:
+                                orig = mesh.vertices[v_idx*3:v_idx*3+3]
+                                logger.info(f"Mesh {mesh_idx} vert {v_idx} weighted to joint {arm_j}: pos={orig}")
+        
+        # Track arm vertex transformations
+        arm_transform_log = []
+        
+        for mesh_idx, mesh in enumerate(self.meshes):
             if len(mesh.bone_weights) == 0 or len(mesh.bone_indices) == 0:
-                # No skinning data - keep original vertices
                 mesh.skinned_vertices = None
                 continue
             
             num_verts = len(mesh.vertices) // 3
             skinned_verts = np.zeros_like(mesh.vertices, dtype=np.float32)
+            explosion_count = 0
             
             try:
-                # Apply weighted bone transforms to each vertex
                 for v_idx in range(num_verts):
-                    vert = np.array([mesh.vertices[v_idx*3], 
-                                    mesh.vertices[v_idx*3+1], 
-                                    mesh.vertices[v_idx*3+2], 
-                                    1.0], dtype=np.float32)
+                    orig_vert = np.array([mesh.vertices[v_idx*3], 
+                                          mesh.vertices[v_idx*3+1], 
+                                          mesh.vertices[v_idx*3+2]], dtype=np.float32)
+                    vert4 = np.array([orig_vert[0], orig_vert[1], orig_vert[2], 1.0], dtype=np.float32)
                     
-                    skinned_vert = np.zeros(4, dtype=np.float32)
+                    skinned_vert = np.zeros(3, dtype=np.float32)
                     total_weight = 0.0
                     
-                    # Blend up to 4 bone influences
+                    # Check if this vertex has any arm joint influence
+                    is_arm_vertex = False
+                    for influence in range(4):
+                        joint_idx = int(mesh.bone_indices[v_idx, influence])
+                        if joint_idx in arm_joints and mesh.bone_weights[v_idx, influence] > 0.01:
+                            is_arm_vertex = True
+                            break
+                    
                     for influence in range(4):
                         weight = mesh.bone_weights[v_idx, influence]
-                        if weight == 0 or weight > 1.0:  # Safety check
+                        if weight <= 0.001:
                             continue
                         
-                        bone_idx = mesh.bone_indices[v_idx, influence]
-                        if bone_idx >= len(self.bones):
+                        joint_idx = int(mesh.bone_indices[v_idx, influence])
+                        if joint_idx >= len(skin_matrices):
                             continue
                         
-                        bone = self.bones[bone_idx]
-                        # Apply: final = world_matrix * inverse_bind * vertex
-                        bone_matrix = bone.world_matrix @ bone.inverse_bind_matrix
-                        transformed = bone_matrix @ vert
-                        
-                        # Safety check for exploded vertices
-                        if np.any(np.abs(transformed[:3]) > 1000.0):
-                            logger.warning(f"Vertex explosion detected at {v_idx}, bone {bone_idx}")
-                            continue
-                        
-                        skinned_vert += weight * transformed
+                        transformed = skin_matrices[joint_idx] @ vert4
+                        skinned_vert += weight * transformed[:3]
                         total_weight += weight
                     
-                    # If no valid bones, use original vertex
-                    if total_weight > 0:
-                        skinned_verts[v_idx*3:v_idx*3+3] = skinned_vert[:3]
+                    if total_weight > 0.001:
+                        result = skinned_vert / total_weight
+                        
+                        # Log arm vertex transformation
+                        if is_arm_vertex and len(arm_transform_log) < 5:
+                            diff = np.linalg.norm(result - orig_vert)
+                            arm_transform_log.append({
+                                'mesh': mesh_idx, 'vert': v_idx,
+                                'orig': orig_vert.copy(), 'result': result.copy(),
+                                'diff': diff
+                            })
+                        
+                        # Check for explosion
+                        diff = np.abs(result - orig_vert)
+                        if np.any(diff > 5.0):  # More sensitive threshold
+                            explosion_count += 1
+                            if explosion_count <= 3:
+                                logger.warning(f"Vertex {v_idx}: orig={orig_vert}, result={result}, diff max={diff.max():.2f}")
+                            result = orig_vert  # Fallback
+                        skinned_verts[v_idx*3:v_idx*3+3] = result
                     else:
-                        skinned_verts[v_idx*3:v_idx*3+3] = mesh.vertices[v_idx*3:v_idx*3+3]
+                        skinned_verts[v_idx*3:v_idx*3+3] = orig_vert
                 
-                mesh.skinned_vertices = skinned_verts
+                if explosion_count > 0:
+                    logger.warning(f"Mesh {mesh_idx}: {explosion_count}/{num_verts} vertices exploded")
+                    mesh.skinned_vertices = None
+                else:
+                    # Verify skinned vertices match original (for identity matrices)
+                    max_diff = np.max(np.abs(skinned_verts - mesh.vertices))
+                    if max_diff > 0.01:
+                        logger.warning(f"Mesh {mesh_idx}: skinned differs from original by {max_diff:.4f}")
+                        # Find and log vertices that actually moved
+                        moved_count = 0
+                        for i in range(num_verts):
+                            orig = mesh.vertices[i*3:i*3+3]
+                            skin = skinned_verts[i*3:i*3+3]
+                            vdiff = np.max(np.abs(skin - orig))
+                            if vdiff > 0.01 and moved_count < 3:
+                                moved_count += 1
+                                # Get which joint this vertex is weighted to
+                                joint = int(mesh.bone_indices[i, 0]) if len(mesh.bone_indices) > i else -1
+                                joint_name = ""
+                                if joint >= 0 and joint < len(self.joint_indices):
+                                    node_idx = self.joint_indices[joint]
+                                    if node_idx < len(self.bones):
+                                        joint_name = self.bones[node_idx].name
+                                logger.info(f"  Moved vert {i}: orig={orig}, skinned={skin}, joint={joint}({joint_name})")
+                    mesh.skinned_vertices = skinned_verts
+                    logger.info(f"Mesh {mesh_idx}: skinned {num_verts} vertices OK, max_diff={max_diff:.6f}")
                 
             except Exception as e:
-                logger.error(f"Error in skinning: {e}")
-                # On error, disable skinning for this mesh
+                logger.error(f"Error skinning mesh {mesh_idx}: {e}")
                 mesh.skinned_vertices = None
+        
+        logger.info("CPU skinning complete")
     
     def render(self, view_matrix: np.ndarray = None, projection_matrix: np.ndarray = None):
         """Render the model using GPU skinning or legacy fallback"""
@@ -767,9 +937,11 @@ class ModelLoader:
             if gltf.skins:
                 ModelLoader._load_skins(gltf, model)
             
-            # NOTE: CPU skinning disabled - causes vertex explosion
-            # The bone index mapping from VRM skins needs investigation
-            # For now, display T-posed model which renders correctly
+            # Test CPU skinning - check if skin matrices are identity
+            if model.bones and model.joint_indices:
+                model.update_skeleton()
+                model._apply_skinning()
+                logger.info("CPU skinning complete")
             
             if mesh_count > 0:
                 logger.info(f"Successfully loaded VRM with {mesh_count} meshes")
@@ -819,7 +991,7 @@ class ModelLoader:
                             bone.children.append(bone_map[child_idx])
                             bone_map[child_idx].parent_idx = idx
             
-            # Apply arm rotations to lower them from T-pose
+            # Apply arm rotations to lower from T-pose
             ModelLoader._apply_arm_rotations(model)
             
             # Mark bones as initialized
@@ -832,46 +1004,52 @@ class ModelLoader:
     
     @staticmethod
     def _apply_arm_rotations(model: Model3D):
-        """Apply rotations to arm bones to lower them from T-pose"""
+        """Apply animation rotations to arm bones to lower them from T-pose
+        
+        VRM coordinate system: Y-up, Z-forward, X-right
+        Arms extend along X axis in T-pose
+        
+        Only rotate UPPER arms - lower arms, hands etc inherit the transform
+        through the bone hierarchy.
+        """
+        import math
         try:
-            # Common VRM/VRoid bone names for arms
-            arm_bone_patterns = [
-                "LeftUpperArm", "LeftShoulder", "J_Bip_L_UpperArm", "Left arm",
-                "RightUpperArm", "RightShoulder", "J_Bip_R_UpperArm", "Right arm",
-                "leftUpperArm", "rightUpperArm", "LeftArm", "RightArm"
-            ]
+            # VRoid bone naming convention - ONLY upper arms (children inherit)
+            left_arm_names = ["J_Bip_L_UpperArm", "LeftUpperArm", "leftUpperArm"]
+            right_arm_names = ["J_Bip_R_UpperArm", "RightUpperArm", "rightUpperArm"]
+            
+            angle = math.radians(-75)  # Rotate down from T-pose (larger angle for sides)
             
             for bone in model.bones:
-                # Check if this is an arm bone
-                is_left_arm = any(pattern.lower() in bone.name.lower() for pattern in arm_bone_patterns[:4])
-                is_right_arm = any(pattern.lower() in bone.name.lower() for pattern in arm_bone_patterns[4:])
+                is_left = any(name.lower() == bone.name.lower() for name in left_arm_names)
+                is_right = any(name.lower() == bone.name.lower() for name in right_arm_names)
                 
-                if is_left_arm or is_right_arm:
-                    # Rotate arms down ~45 degrees around Z axis
-                    # Quaternion for 45 degree rotation around Z axis
-                    # For left arm: rotate forward (positive)
-                    # For right arm: rotate forward (positive)
-                    import math
-                    angle = math.radians(45)  # 45 degrees down
-                    
-                    # Z-axis rotation quaternion
-                    if is_left_arm:
-                        # Left arm rotates clockwise (when viewed from front)
-                        bone.rotation = np.array([0.0, 0.0, math.sin(angle/2), math.cos(angle/2)], dtype=np.float32)
-                    else:
-                        # Right arm rotates counter-clockwise
-                        bone.rotation = np.array([0.0, 0.0, -math.sin(angle/2), math.cos(angle/2)], dtype=np.float32)
-                    
-                    logger.info(f"Applied arm rotation to bone: {bone.name}")
+                if is_left or is_right:
+                    # Both arms rotate same direction around Z to lower
+                    bone.animation_rotation = np.array([
+                        0.0,                    # x
+                        0.0,                    # y
+                        math.sin(angle/2),      # z - roll around Z axis
+                        math.cos(angle/2)       # w
+                    ], dtype=np.float32)
+                    logger.info(f"Set animation for {bone.name}: angle={math.degrees(angle)}°")
             
         except Exception as e:
             logger.warning(f"Could not apply arm rotations: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
     
     @staticmethod
     def _load_skins(gltf, model: Model3D):
         """Load skin data - inverse bind matrices for skeletal animation"""
         try:
             for skin in gltf.skins:
+                # Store joint-to-node mapping (CRITICAL for skinning!)
+                # skin.joints[joint_idx] = node_idx
+                # mesh bone_indices contain joint_idx, not node_idx
+                model.joint_indices = list(skin.joints)
+                logger.info(f"Skin has {len(skin.joints)} joints")
+                
                 # Get inverse bind matrices
                 if skin.inverseBindMatrices is not None:
                     ibm_data = ModelLoader._get_accessor_data(gltf, skin.inverseBindMatrices)
@@ -880,13 +1058,18 @@ class ModelLoader:
                         num_joints = len(skin.joints)
                         ibm_matrices = ibm_data.reshape(num_joints, 4, 4)
                         
-                        # Assign inverse bind matrices to corresponding bones
+                        # Store IBM per joint index (not per bone)
+                        model.inverse_bind_matrices = ibm_matrices
+                        
+                        # Also assign to bones for compatibility
                         for joint_idx, node_idx in enumerate(skin.joints):
                             if node_idx < len(model.bones):
                                 model.bones[node_idx].inverse_bind_matrix = ibm_matrices[joint_idx]
-                                logger.debug(f"Set inverse bind matrix for bone {model.bones[node_idx].name}")
                         
                         logger.info(f"Loaded {num_joints} inverse bind matrices from skin")
+                
+                # Only use first skin
+                break
                 
         except Exception as e:
             logger.warning(f"Could not load skin data: {e}")
