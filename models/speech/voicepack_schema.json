@@ -1,0 +1,359 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "E.V3 Voicepack Configuration",
+  "description": "Configuration schema for E.V3 voicepacks - supports neural TTS models and sample-based playback",
+  "type": "object",
+  "required": ["name", "version", "type"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the voicepack",
+      "examples": ["Default Voice", "Anime Girl", "Deep Male Voice"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of the voicepack",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "author": {
+      "type": "string",
+      "description": "Creator of the voicepack"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the voice characteristics"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["neural", "samples", "hybrid"],
+      "description": "Type of TTS: neural (TTS model), samples (pre-recorded), or hybrid (both)"
+    },
+    "neural": {
+      "type": "object",
+      "description": "Neural TTS model configuration (required if type is 'neural' or 'hybrid')",
+      "properties": {
+        "engine": {
+          "type": "string",
+          "enum": ["piper", "coqui", "espeak", "custom"],
+          "description": "TTS engine to use",
+          "default": "piper"
+        },
+        "model_path": {
+          "type": "string",
+          "description": "Path to TTS model file (relative to voicepack folder)",
+          "examples": ["model.onnx", "tts_model.pth"]
+        },
+        "config_path": {
+          "type": "string",
+          "description": "Path to model config file (if required by engine)",
+          "examples": ["model.json", "config.json"]
+        },
+        "voice_id": {
+          "type": "string",
+          "description": "Voice identifier for multi-voice models"
+        },
+        "sample_rate": {
+          "type": "integer",
+          "description": "Audio sample rate in Hz",
+          "default": 22050,
+          "examples": [16000, 22050, 44100]
+        }
+      },
+      "required": ["engine", "model_path"]
+    },
+    "samples": {
+      "type": "object",
+      "description": "Pre-recorded sample configuration (required if type is 'samples' or 'hybrid')",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "description": "Folder containing audio samples (relative to voicepack folder)",
+          "default": "samples"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["wav", "mp3", "ogg", "flac"],
+          "description": "Audio file format",
+          "default": "wav"
+        },
+        "mapping": {
+          "type": "object",
+          "description": "Map text patterns to sample files",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "good morning": "greetings/morning.wav",
+              "hello": "greetings/hello.wav",
+              "goodbye": "farewells/goodbye.wav"
+            }
+          ]
+        },
+        "phonetic_samples": {
+          "type": "boolean",
+          "description": "Whether samples are phonetic units (for concatenation)",
+          "default": false
+        }
+      },
+      "required": ["folder"]
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Voice synthesis parameters",
+      "properties": {
+        "pitch": {
+          "type": "number",
+          "description": "Pitch adjustment (1.0 = normal, 0.5 = lower, 2.0 = higher)",
+          "default": 1.0,
+          "minimum": 0.1,
+          "maximum": 3.0
+        },
+        "speed": {
+          "type": "number",
+          "description": "Speech rate (1.0 = normal, 0.5 = slower, 2.0 = faster)",
+          "default": 1.0,
+          "minimum": 0.1,
+          "maximum": 3.0
+        },
+        "volume": {
+          "type": "number",
+          "description": "Volume level (0.0 to 1.0)",
+          "default": 1.0,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "energy": {
+          "type": "number",
+          "description": "Energy/intensity of speech (if supported by engine)",
+          "default": 1.0,
+          "minimum": 0.1,
+          "maximum": 2.0
+        }
+      }
+    },
+    "emotion_map": {
+      "type": "object",
+      "description": "Map emotions to parameter adjustments or sample variations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "pitch": {
+            "type": "number",
+            "description": "Pitch multiplier for this emotion"
+          },
+          "speed": {
+            "type": "number",
+            "description": "Speed multiplier for this emotion"
+          },
+          "volume": {
+            "type": "number",
+            "description": "Volume multiplier for this emotion"
+          },
+          "energy": {
+            "type": "number",
+            "description": "Energy multiplier for this emotion"
+          },
+          "sample_suffix": {
+            "type": "string",
+            "description": "Suffix to add to sample filenames (e.g., '_happy')"
+          }
+        }
+      },
+      "examples": [
+        {
+          "happy": {
+            "pitch": 1.2,
+            "speed": 1.1,
+            "energy": 1.3
+          },
+          "sad": {
+            "pitch": 0.9,
+            "speed": 0.85,
+            "energy": 0.7
+          },
+          "angry": {
+            "pitch": 0.95,
+            "speed": 1.15,
+            "energy": 1.5
+          },
+          "calm": {
+            "pitch": 1.0,
+            "speed": 0.9,
+            "energy": 0.9
+          }
+        }
+      ]
+    },
+    "filters": {
+      "type": "object",
+      "description": "Audio post-processing filters",
+      "properties": {
+        "reverb": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "room_size": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.5
+            },
+            "damping": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.5
+            }
+          }
+        },
+        "eq": {
+          "type": "object",
+          "description": "Equalizer settings",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "low": {
+              "type": "number",
+              "description": "Low frequency gain (dB)",
+              "default": 0.0
+            },
+            "mid": {
+              "type": "number",
+              "description": "Mid frequency gain (dB)",
+              "default": 0.0
+            },
+            "high": {
+              "type": "number",
+              "description": "High frequency gain (dB)",
+              "default": 0.0
+            }
+          }
+        },
+        "compressor": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "threshold": {
+              "type": "number",
+              "description": "Threshold in dB",
+              "default": -20.0
+            },
+            "ratio": {
+              "type": "number",
+              "description": "Compression ratio",
+              "default": 4.0
+            }
+          }
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "description": "Fallback behavior when generation fails",
+      "properties": {
+        "behavior": {
+          "type": "string",
+          "enum": ["silent", "beep", "text_only", "retry"],
+          "description": "What to do when speech generation fails",
+          "default": "text_only"
+        },
+        "retry_count": {
+          "type": "integer",
+          "description": "Number of retries before falling back",
+          "default": 3,
+          "minimum": 0
+        },
+        "backup_voicepack": {
+          "type": "string",
+          "description": "Name of backup voicepack to use if this one fails"
+        }
+      }
+    },
+    "animation_sync": {
+      "type": "object",
+      "description": "Settings for syncing lip-sync and animations with speech",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable animation synchronization",
+          "default": true
+        },
+        "phoneme_map": {
+          "type": "string",
+          "description": "Path to phoneme-to-viseme mapping file",
+          "examples": ["phoneme_map.json"]
+        },
+        "estimate_timing": {
+          "type": "boolean",
+          "description": "Estimate timing if no phoneme data available",
+          "default": true
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata",
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Primary language code (ISO 639-1)",
+          "examples": ["en", "ja", "es", "fr"]
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["male", "female", "neutral"],
+          "description": "Voice gender characteristic"
+        },
+        "age": {
+          "type": "string",
+          "enum": ["child", "teen", "adult", "elderly"],
+          "description": "Voice age characteristic"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorization",
+          "examples": [["anime", "high-pitched", "energetic"]]
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "type": {
+          "const": "neural"
+        }
+      },
+      "required": ["neural"]
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "samples"
+        }
+      },
+      "required": ["samples"]
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "hybrid"
+        }
+      },
+      "required": ["neural", "samples"]
+    }
+  ]
+}

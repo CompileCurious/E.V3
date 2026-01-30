@@ -136,29 +136,115 @@ E.V3/
 
 ## Requirements
 
-- Python 3.13+ (Python 3.10+ supported)
-- Windows 10/11
-- **llama-cpp-python** for local LLM inference
-- CUDA-capable GPU (optional, for faster local LLM)
-- 8GB+ RAM (16GB recommended for local LLM)
+### System Requirements
+- **OS**: Windows 10/11 (64-bit)
+- **Python**: 3.13+ (3.10+ supported, 3.13 recommended for llama-cpp-python)
+- **RAM**: 8GB minimum, 16GB recommended (for local LLM)
+- **GPU**: CUDA-capable GPU optional (faster LLM inference)
+- **Storage**: ~10GB for models (LLM + character)
+
+### Python Dependencies
+
+**Core Dependencies** (automatically installed):
+```bash
+PySide6>=6.6.0          # Qt6 GUI framework
+PyOpenGL>=3.1.0         # OpenGL 3D rendering
+loguru>=0.7.0           # Logging
+pyyaml>=6.0             # Configuration
+pywin32>=306            # Windows integration
+pygltflib>=1.16.0       # GLTF/VRM model loading
+Pillow>=10.0.0          # Image/texture loading
+pynput>=1.7.6           # Global hotkeys
+```
+
+**LLM Support** (required for AI features):
+```bash
+llama-cpp-python>=0.3.0  # Local LLM inference
+numpy>=1.20.0            # Required by llama-cpp-python
+```
+
+**Optional Dependencies**:
+```bash
+pygame>=2.5.0           # Audio playback for TTS
+onnxruntime>=1.16.0     # Neural TTS (Piper)
+```
+
+### Installation Notes
+
+⚠️ **Python Version**: E.V3 uses Python 3.13 portable in the repo, but you can use any Python 3.10+. Make sure your Python version matches the wheel files you download.
+
+⚠️ **llama-cpp-python**: This is the most important dependency. Install it separately:
+```bash
+# CPU-only (easiest)
+pip install llama-cpp-python
+
+# GPU acceleration (CUDA) - requires CUDA Toolkit
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
+```
+
+⚠️ **Environment Management**: The repo does NOT include Python environments or wheels. Set up your own:
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate it
+.venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install llama-cpp-python
+```
 
 ## Installation
 
-### Quick Setup
+### Quick Setup (Automated)
 ```bash
 # Clone repository
 git clone https://github.com/yourusername/E.V3.git
 cd E.V3
 
-# Run setup
+# Run setup script (creates venv, installs dependencies)
 setup.bat
+```
 
-# Install dependencies
+The setup script will:
+1. Create a Python virtual environment
+2. Install all requirements from requirements.txt
+3. Install llama-cpp-python
+4. Create necessary directories
+
+### Manual Setup
+```bash
+# Clone repository
+git clone https://github.com/yourusername/E.V3.git
+cd E.V3
+
+# Create virtual environment (recommended)
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install core dependencies
 pip install -r requirements.txt
 
-# Install LLM support
+# Install LLM support (REQUIRED for AI features)
 pip install llama-cpp-python
+
+# Optional: Install audio support
+pip install pygame
+
+# Optional: Install neural TTS
+pip install onnxruntime
 ```
+
+### Python 3.13 Portable (Included in Repo)
+
+The repo includes a Python 3.13 portable setup for consistency:
+```bash
+# Use portable Python (has llama-cpp-python pre-configured)
+start_with_313.bat
+```
+
+This uses `.python313_portable/` which is NOT tracked in git. You'll need to set it up locally if using this method.
 
 ### Model Setup
 

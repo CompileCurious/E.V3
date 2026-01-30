@@ -1,0 +1,56 @@
+{
+  "name": "Sample Voice Pack - Greetings",
+  "version": "1.0.0",
+  "author": "E.V3 Team",
+  "description": "Example sample-based voicepack with pre-recorded greetings",
+  "type": "samples",
+  "samples": {
+    "folder": "samples",
+    "format": "wav",
+    "mapping": {
+      "hello": "greetings/hello.wav",
+      "hi": "greetings/hi.wav",
+      "good morning": "greetings/good_morning.wav",
+      "good afternoon": "greetings/good_afternoon.wav",
+      "good evening": "greetings/good_evening.wav",
+      "goodbye": "farewells/goodbye.wav",
+      "see you later": "farewells/see_you_later.wav",
+      "thanks": "responses/thanks.wav",
+      "thank you": "responses/thank_you.wav",
+      "yes": "responses/yes.wav",
+      "no": "responses/no.wav",
+      "okay": "responses/okay.wav"
+    }
+  },
+  "parameters": {
+    "volume": 1.0
+  },
+  "emotion_map": {
+    "happy": {
+      "sample_suffix": "_happy",
+      "volume": 1.1
+    },
+    "sad": {
+      "sample_suffix": "_sad",
+      "volume": 0.9
+    },
+    "excited": {
+      "sample_suffix": "_excited",
+      "volume": 1.2
+    }
+  },
+  "fallback": {
+    "behavior": "text_only",
+    "retry_count": 0
+  },
+  "animation_sync": {
+    "enabled": true,
+    "estimate_timing": true
+  },
+  "metadata": {
+    "language": "en",
+    "gender": "female",
+    "age": "adult",
+    "tags": ["samples", "greetings", "basic"]
+  }
+}

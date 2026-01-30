@@ -54,15 +54,18 @@ class LocalLLM(LLMBase):
             
             full_path = os.path.join(model_path, model_file)
             
+            logger.info(f"Attempting to load LLM from: {full_path}")
+            
             if not os.path.exists(full_path):
-                logger.warning(f"Model file not found: {full_path}")
-                logger.info(f"Please download the model or run: python tools/download_phi3.py")
+                logger.error(f"Model file not found: {full_path}")
+                logger.error(f"Please download the model or run: python tools/download_phi3.py")
+                self.model = None
                 return
             
             # Initialize model
             n_gpu_layers = self.config.get("gpu_layers", 35) if self.config.get("use_gpu", True) else 0
             
-            logger.info(f"Loading {mode} mode LLM: {model_file}")
+            logger.info(f"Loading {mode} mode LLM: {model_file} (GPU layers: {n_gpu_layers})")
             self.model = Llama(
                 model_path=full_path,
                 n_ctx=self.config.get("context_length", 4096),
@@ -72,10 +75,15 @@ class LocalLLM(LLMBase):
             
             logger.info("Local LLM initialized successfully")
             
-        except ImportError:
-            logger.error("llama-cpp-python not installed. Install with: pip install llama-cpp-python")
+        except ImportError as e:
+            logger.error(f"llama-cpp-python not installed: {e}")
+            logger.error("Install with: pip install llama-cpp-python")
+            self.model = None
         except Exception as e:
             logger.error(f"Failed to initialize local LLM: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            self.model = None
     
     def generate(self, prompt: str, max_tokens: int = None) -> str:
         """

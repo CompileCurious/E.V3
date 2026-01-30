@@ -1,53 +1,51 @@
-# Core (kernel) dependencies
-PySide6>=6.6.0
-PyQt6-WebEngine>=6.6.0  # For advanced features if needed
-PyOpenGL>=3.1.7
-PyOpenGL-accelerate>=3.1.7
-numpy>=1.24.0
-pillow>=10.0.0
+# E.V3 Core Dependencies
+# Install with: pip install -r requirements.txt
+# Note: llama-cpp-python should be installed separately (see README)
 
-# 3D rendering and animation
-panda3d>=1.10.13
-pygltflib>=1.16.0  # For loading GLTF/GLB models
-pyassimp>=4.1.4  # Model loading
+# === Core Framework ===
+PySide6>=6.6.0              # Qt6 GUI framework for UI
+PyOpenGL>=3.1.7             # OpenGL for 3D rendering
+numpy>=1.24.0               # Array operations (also required by llama-cpp)
+loguru>=0.7.0               # Enhanced logging
+pyyaml>=6.0.1               # YAML configuration
 
-# LLM integration
-llama-cpp-python>=0.2.0  # For local Mistral 7B
-openai>=1.0.0  # For GPT mini API
-requests>=2.31.0
+# === Windows Integration ===
+pywin32>=306                # Windows API (named pipes, system tray, hotkeys)
+pynput>=1.7.6               # Global hotkey support
 
-# Windows service
-pywin32>=306
-wmi>=1.5.1  # Windows Management Instrumentation
-pywinauto>=0.6.8  # For window automation
+# === 3D Model Loading ===
+pygltflib>=1.16.0           # GLTF/GLB/VRM model loading
+Pillow>=10.0.0              # Image/texture loading
 
-# Event monitoring
-watchdog>=3.0.0  # File system monitoring
-psutil>=5.9.0  # System monitoring
+# === Optional: Audio Support ===
+# pygame>=2.5.0             # Audio playback for TTS (uncomment if needed)
 
-# Calendar integration
-O365>=2.0.27  # Microsoft 365/Outlook calendar
-google-auth>=2.23.0  # Google Calendar
-google-auth-oauthlib>=1.1.0
-google-api-python-client>=2.100.0
+# === Optional: Neural TTS ===
+# onnxruntime>=1.16.0       # For Piper TTS models (uncomment if needed)
 
-# IPC and communication
-pyzmq>=25.1.0  # Zero MQ for IPC (alternative)
-# Note: We'll primarily use native Windows named pipes via win32pipe
+# === LLM Support (INSTALL SEPARATELY) ===
+# llama-cpp-python>=0.3.0   # Local LLM inference
+#
+# Install with one of:
+#   pip install llama-cpp-python                    # CPU-only
+#   pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121  # CUDA
+#
+# Or use pre-built wheel from repo (if available):
+#   pip install llama_cpp_python-0.3.2-cp313-cp313-win_amd64.whl
 
-# State management
-transitions>=0.9.0  # State machine library
+# === Optional: External LLM API ===
+# openai>=1.0.0             # For GPT API (uncomment if using external LLM)
 
-# Configuration
-pyyaml>=6.0.1
-python-dotenv>=1.0.0
+# === Optional: Calendar Integration ===
+# O365>=2.0.27              # Microsoft 365/Outlook (uncomment if needed)
+# google-auth>=2.23.0       # Google Calendar (uncomment if needed)
+# google-auth-oauthlib>=1.1.0
+# google-api-python-client>=2.100.0
 
-# Logging and monitoring
-loguru>=0.7.0
-
-# Audio (for speech playback)
-pygame>=2.5.0  # Audio playback
-sounddevice>=0.4.6  # Alternative audio backend
+# === Development Dependencies (optional) ===
+# pytest>=7.4.0             # Testing framework
+# black>=23.0.0             # Code formatting
+# pylint>=3.0.0             # Linting
 soundfile>=0.12.1
 
 # TTS engines (optional - install as needed)

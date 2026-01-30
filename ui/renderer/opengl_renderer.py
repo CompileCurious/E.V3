@@ -1,6 +1,6 @@
 """
-OpenGL 3D Renderer Widget
-Renders 3D character model with animations
+OpenGL 3D Renderer Widget with GPU Skinning
+Renders 3D character model with skeletal animations using GLSL shaders
 """
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -17,7 +17,8 @@ from .model_loader import Model3D, ModelLoader
 
 class OpenGLRenderer(QOpenGLWidget):
     """
-    OpenGL widget for rendering 3D character
+    OpenGL widget for rendering 3D character with GPU skeletal animation
+    Supports both modern shader-based rendering and legacy fallback
     """
     
     def __init__(self, parent=None, config: Dict[str, Any] = None):
@@ -41,12 +42,14 @@ class OpenGLRenderer(QOpenGLWidget):
         self.animation_time = 0.0
         self.animation_speed = 1.0
         
-        # Setup format - use Compatibility profile for legacy OpenGL functions
+        # Setup format - request OpenGL 3.3 Compatibility for GPU skinning with legacy fallback
+        # Compatibility profile allows both shader-based and legacy rendering
         fmt = QSurfaceFormat()
-        fmt.setVersion(2, 1)  # OpenGL 2.1 for compatibility
-        fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
+        fmt.setVersion(3, 3)  # OpenGL 3.3 for shader support
+        fmt.setProfile(QSurfaceFormat.CompatibilityProfile)  # Allows legacy fallback
         fmt.setSamples(4)  # Antialiasing
         fmt.setAlphaBufferSize(8)  # Enable alpha channel
+        fmt.setDepthBufferSize(24)
         self.setFormat(fmt)
         
         # Make widget transparent
@@ -57,6 +60,9 @@ class OpenGLRenderer(QOpenGLWidget):
         self.idle_animation_enabled = True
         self.breathing_phase = 0.0
         
+        # GPU skinning flag
+        self.gpu_skinning_initialized = False
+        
         # Setup timer for animation
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)
@@ -64,10 +70,21 @@ class OpenGLRenderer(QOpenGLWidget):
         # Start with idle animation enabled
         self.timer.start(1000 // fps)
         
-        logger.info("OpenGL renderer initialized")
+        logger.info("OpenGL renderer initialized (GPU skinning enabled)")
     
     def initializeGL(self):
-        """Initialize OpenGL"""
+        """Initialize OpenGL and GPU skinning"""
+        # Log OpenGL version info
+        version = glGetString(GL_VERSION)
+        vendor = glGetString(GL_VENDOR)
+        renderer_str = glGetString(GL_RENDERER)
+        if version:
+            logger.info(f"OpenGL Version: {version.decode()}")
+        if vendor:
+            logger.info(f"OpenGL Vendor: {vendor.decode()}")
+        if renderer_str:
+            logger.info(f"OpenGL Renderer: {renderer_str.decode()}")
+        
         # Set clear color (transparent or background color)
         glClearColor(0.0, 0.0, 0.0, 0.0)  # Transparent
         
@@ -78,11 +95,20 @@ class OpenGLRenderer(QOpenGLWidget):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         
-        # Enable lighting
+        # Check if we can use modern OpenGL
+        try:
+            gl_major = glGetIntegerv(GL_MAJOR_VERSION)
+            gl_minor = glGetIntegerv(GL_MINOR_VERSION)
+            self.supports_modern_gl = (gl_major > 3) or (gl_major == 3 and gl_minor >= 3)
+            logger.info(f"OpenGL {gl_major}.{gl_minor} detected, modern GL support: {self.supports_modern_gl}")
+        except:
+            self.supports_modern_gl = False
+            logger.warning("Could not detect OpenGL version, assuming legacy")
+        
+        # ALWAYS setup legacy lighting (needed for fallback and compatibility)
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
         
-        # Setup light
         ambient = self.config.get("rendering", {}).get("ambient_light", 0.6)
         directional = self.config.get("rendering", {}).get("directional_light", 0.8)
         
@@ -90,12 +116,23 @@ class OpenGLRenderer(QOpenGLWidget):
         glLightfv(GL_LIGHT0, GL_DIFFUSE, [directional, directional, directional, 1.0])
         glLightfv(GL_LIGHT0, GL_POSITION, [1.0, 1.0, 1.0, 0.0])
         
-        # Enable color material
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
         
         # Load model
         self.load_model()
+        
+        # Try GPU skinning if modern GL is available
+        self.gpu_skinning_initialized = False
+        if self.model and self.supports_modern_gl:
+            try:
+                if self.model.initialize_gpu_skinning():
+                    self.gpu_skinning_initialized = True
+                    logger.info("GPU skinning initialized successfully")
+                else:
+                    logger.warning("GPU skinning initialization failed, using legacy rendering")
+            except Exception as e:
+                logger.error(f"GPU skinning init error: {e}, using legacy rendering")
         
         logger.info("OpenGL initialized")
     
@@ -112,47 +149,122 @@ class OpenGLRenderer(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
     
     def paintGL(self):
-        """Render scene"""
+        """Render scene with GPU skinning"""
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        # Build view matrix
+        view_matrix = np.eye(4, dtype=np.float32)
         
-        # Setup camera with pan support
-        glTranslatef(self.camera_pan_x, self.camera_pan_y, -self.camera_distance)
-        glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
-        glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
+        # Camera translation (pull back)
+        view_matrix[3, 2] = -self.camera_distance
+        view_matrix[3, 0] = self.camera_pan_x
+        view_matrix[3, 1] = self.camera_pan_y
         
-        # Render model with idle animation
+        # Camera rotation
+        rx = np.radians(self.camera_angle_x)
+        ry = np.radians(self.camera_angle_y)
+        
+        rot_x = np.array([
+            [1, 0, 0, 0],
+            [0, np.cos(rx), -np.sin(rx), 0],
+            [0, np.sin(rx), np.cos(rx), 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        rot_y = np.array([
+            [np.cos(ry), 0, np.sin(ry), 0],
+            [0, 1, 0, 0],
+            [-np.sin(ry), 0, np.cos(ry), 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        view_matrix = view_matrix @ rot_x @ rot_y
+        
+        # Build projection matrix
+        aspect = self.width() / self.height() if self.height() > 0 else 1.0
+        fov = 45.0
+        near = 0.1
+        far = 100.0
+        
+        f = 1.0 / np.tan(np.radians(fov) / 2.0)
+        projection_matrix = np.array([
+            [f / aspect, 0, 0, 0],
+            [0, f, 0, 0],
+            [0, 0, (far + near) / (near - far), -1],
+            [0, 0, (2 * far * near) / (near - far), 0]
+        ], dtype=np.float32)
+        
+        # Render model
         if self.model:
-            glPushMatrix()
+            # Build model matrix with idle animation
+            model_matrix = np.eye(4, dtype=np.float32)
             
-            # Apply model position, rotation, scale first
-            glTranslatef(self.model.position[0], self.model.position[1], self.model.position[2])
-            glRotatef(self.model.rotation[1], 0.0, 1.0, 0.0)
-            glRotatef(self.model.rotation[0], 1.0, 0.0, 0.0)
-            glRotatef(self.model.rotation[2], 0.0, 0.0, 1.0)
+            # Position
+            model_matrix[3, 0] = self.model.position[0]
+            model_matrix[3, 1] = self.model.position[1]
+            model_matrix[3, 2] = self.model.position[2]
             
-            # Apply idle animation (gentle breathing/sway)
+            # Idle animation
             if self.idle_animation_enabled:
-                # Breathing scale - more visible
-                breath_scale = 1.0 + 0.05 * np.sin(self.breathing_phase)
-                # Sway rotation - more visible
-                sway_angle = 5.0 * np.sin(self.breathing_phase * 0.7)
+                breath_scale = 1.0 + 0.03 * np.sin(self.breathing_phase)
+                sway_angle = np.radians(3.0 * np.sin(self.breathing_phase * 0.7))
                 
-                glRotatef(sway_angle, 0.0, 1.0, 0.0)  # Gentle left-right sway
-                glScalef(
-                    self.model.scale * breath_scale,
-                    self.model.scale * breath_scale,
-                    self.model.scale * breath_scale
-                )
+                # Apply sway
+                sway_rot = np.array([
+                    [np.cos(sway_angle), 0, np.sin(sway_angle), 0],
+                    [0, 1, 0, 0],
+                    [-np.sin(sway_angle), 0, np.cos(sway_angle), 0],
+                    [0, 0, 0, 1]
+                ], dtype=np.float32)
+                
+                scale = self.model.scale * breath_scale
             else:
-                glScalef(self.model.scale, self.model.scale, self.model.scale)
+                sway_rot = np.eye(4, dtype=np.float32)
+                scale = self.model.scale
             
-            # Render the model (all meshes)
-            self.model.render()
+            # Scale
+            scale_matrix = np.array([
+                [scale, 0, 0, 0],
+                [0, scale, 0, 0],
+                [0, 0, scale, 0],
+                [0, 0, 0, 1]
+            ], dtype=np.float32)
             
-            glPopMatrix()
+            model_matrix = model_matrix @ sway_rot @ scale_matrix
+            
+            # Combine into view matrix for rendering
+            combined_view = view_matrix @ model_matrix
+            
+            # Render with GPU skinning or fallback
+            if self.gpu_skinning_initialized and hasattr(self, 'supports_modern_gl') and self.supports_modern_gl:
+                self.model.render(combined_view, projection_matrix)
+            else:
+                # Legacy path - set up OpenGL matrices
+                glMatrixMode(GL_PROJECTION)
+                glLoadIdentity()
+                gluPerspective(45.0, aspect, 0.1, 100.0)
+                
+                glMatrixMode(GL_MODELVIEW)
+                glLoadIdentity()
+                glTranslatef(self.camera_pan_x, self.camera_pan_y, -self.camera_distance)
+                glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
+                glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
+                
+                glTranslatef(self.model.position[0], self.model.position[1], self.model.position[2])
+                
+                if self.idle_animation_enabled:
+                    breath_scale = 1.0 + 0.03 * np.sin(self.breathing_phase)
+                    sway_angle = 3.0 * np.sin(self.breathing_phase * 0.7)
+                    glRotatef(sway_angle, 0.0, 1.0, 0.0)
+                    glScalef(
+                        self.model.scale * breath_scale,
+                        self.model.scale * breath_scale,
+                        self.model.scale * breath_scale
+                    )
+                else:
+                    glScalef(self.model.scale, self.model.scale, self.model.scale)
+                
+                self.model.render()
         
         glFlush()
     

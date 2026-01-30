@@ -1,0 +1,85 @@
+{
+  "name": "Hybrid Voice - Best of Both",
+  "version": "1.0.0",
+  "author": "E.V3 Team",
+  "description": "Hybrid voicepack combining pre-recorded samples with neural TTS fallback",
+  "type": "hybrid",
+  "neural": {
+    "engine": "piper",
+    "model_path": "en_US-lessac-medium.onnx",
+    "config_path": "en_US-lessac-medium.onnx.json",
+    "sample_rate": 22050
+  },
+  "samples": {
+    "folder": "samples",
+    "format": "wav",
+    "mapping": {
+      "hello": "greetings/hello.wav",
+      "good morning": "greetings/good_morning.wav",
+      "good afternoon": "greetings/good_afternoon.wav",
+      "goodbye": "farewells/goodbye.wav",
+      "i'm ready": "catchphrases/ready.wav",
+      "let's go": "catchphrases/lets_go.wav"
+    }
+  },
+  "parameters": {
+    "pitch": 1.1,
+    "speed": 1.0,
+    "volume": 0.9,
+    "energy": 1.0
+  },
+  "emotion_map": {
+    "happy": {
+      "pitch": 1.3,
+      "speed": 1.1,
+      "energy": 1.3,
+      "sample_suffix": "_happy"
+    },
+    "sad": {
+      "pitch": 0.85,
+      "speed": 0.8,
+      "energy": 0.7
+    },
+    "calm": {
+      "pitch": 1.0,
+      "speed": 0.9,
+      "energy": 0.85
+    },
+    "excited": {
+      "pitch": 1.4,
+      "speed": 1.25,
+      "energy": 1.5,
+      "sample_suffix": "_excited"
+    }
+  },
+  "filters": {
+    "reverb": {
+      "enabled": false
+    },
+    "eq": {
+      "enabled": true,
+      "low": 0.5,
+      "mid": 0.0,
+      "high": -1.0
+    },
+    "compressor": {
+      "enabled": true,
+      "threshold": -18.0,
+      "ratio": 3.5
+    }
+  },
+  "fallback": {
+    "behavior": "retry",
+    "retry_count": 2
+  },
+  "animation_sync": {
+    "enabled": true,
+    "estimate_timing": true
+  },
+  "metadata": {
+    "language": "en",
+    "gender": "female",
+    "age": "adult",
+    "tags": ["hybrid", "versatile", "natural", "anime-style"]
+  }
+}

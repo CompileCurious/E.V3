@@ -1,42 +1,20 @@
-# Ignore all files inside models/ subfolders (keep documentation)
-/models/*
-!/models/*.md
-!/models/character/
-/models/character/*
-!/models/character/README.md
+# Python Environments (NOT tracked - local only)
+venv/
+env/
+ENV/
+.venv/
+.env/
+.python*/
+.python313_portable/
+*_portable/
+virtualenv/
 
-# Ignore common model binary formats under models
-/models/**/*.gguf
-/models/**/*.safetensors
-/models/**/*.bin
-/models/**/*.pt
-/models/**/*.zip
+# Python Wheels and Packages (download locally)
+*.whl
+*.egg
+*.egg-info/
 
-# Ignore ALL character models (user-customizable, not part of repo)
-/models/character/*.vrm
-/models/character/*.glb
-/models/character/*.gltf
-/models/character/*.fbx
-/models/character/*.obj
-/models/character/E.V3.vrm
-# But allow documentation
-!/models/character/README.md
-
-# Ignore speech model files
-/models/speech/**/*.onnx
-/models/speech/**/*.pth
-/models/speech/**/*.wav
-/models/speech/**/*.mp3
-/models/speech/**/*.ogg
-
-# Explicitly ignore the entire llm folder (models are user-downloaded)
-/models/llm/
-/models/llm/*.gguf
-/models/llm/*.bin
-/models/llm/*.safetensors
-/models/llm/mistral-7b-instruct-v0.2.Q4_K_M.gguf
-/models/llm/Phi-3-mini-4k-instruct-q4.gguf
-# Python
+# Python Cache and Build
 __pycache__/
 *.py[cod]
 *$py.class
@@ -54,17 +32,18 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
 .installed.cfg
-*.egg
 
-# Virtual environments
-venv/
-env/
-ENV/
-.venv
+# PyInstaller Build Outputs
+*.spec
+*.manifest
+*.exe
+*.dll
+*.pyd
+build/
+dist/
 
-# IDE
+# IDE and Editors
 .vscode/
 .idea/
 *.swp
@@ -73,31 +52,50 @@ ENV/
 
 # Environment variables
 .env
+.env.local
 
-# Logs
+# Logs (generated at runtime)
 logs/
 *.log
 
-# Models (too large for git, user-customizable)
-# LLM models are downloaded separately
-# Character models are fully customizable
-models/llm/*.gguf
-models/llm/*.bin
-models/character/*.vrm
-models/character/*.glb
-
-# Credentials
-config/credentials/
-*.json
-*.token
-
-# Cache
+# Cache directories
 .cache/
 *.cache
+__pycache__/
 
 # Windows
 Thumbs.db
 desktop.ini
+
+# Credentials (NEVER commit)
+config/credentials/
+*.token
+*.key
+*.pem
+
+# Models (User-downloaded, NOT in repo)
+# All models are downloaded separately for privacy and size
+/models/llm/
+/models/llm/*
+!/models/llm/.gitkeep
+!/models/llm/*.md
+/models/character/*.vrm
+/models/character/*.glb
+/models/character/*.gltf
+/models/character/*.fbx
+/models/character/*.obj
+/models/speech/**/*.onnx
+/models/speech/**/*.pth
+/models/speech/**/*.wav
+/models/speech/**/*.mp3
+/models/speech/**/*.ogg
+
+# Model Documentation (KEEP these)
+!/models/*.md
+!/models/MODEL_SETUP.md
+!/models/character/README.md
+!/models/speech/README.md
+!/models/speech/voicepack_schema.json
 
 # Temporary files
 tmp/

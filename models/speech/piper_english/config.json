@@ -1,0 +1,83 @@
+{
+  "name": "Piper English Female",
+  "version": "1.0.0",
+  "author": "E.V3 Team",
+  "description": "High-quality English female voice using Piper TTS",
+  "type": "neural",
+  "neural": {
+    "engine": "piper",
+    "model_path": "en_US-lessac-medium.onnx",
+    "config_path": "en_US-lessac-medium.onnx.json",
+    "sample_rate": 22050
+  },
+  "parameters": {
+    "pitch": 1.0,
+    "speed": 1.0,
+    "volume": 0.9,
+    "energy": 1.0
+  },
+  "emotion_map": {
+    "happy": {
+      "pitch": 1.2,
+      "speed": 1.1,
+      "energy": 1.3
+    },
+    "sad": {
+      "pitch": 0.9,
+      "speed": 0.85,
+      "energy": 0.7
+    },
+    "angry": {
+      "pitch": 0.95,
+      "speed": 1.15,
+      "energy": 1.5
+    },
+    "calm": {
+      "pitch": 1.0,
+      "speed": 0.9,
+      "energy": 0.9
+    },
+    "excited": {
+      "pitch": 1.3,
+      "speed": 1.2,
+      "energy": 1.4
+    },
+    "neutral": {
+      "pitch": 1.0,
+      "speed": 1.0,
+      "energy": 1.0
+    }
+  },
+  "filters": {
+    "reverb": {
+      "enabled": false,
+      "room_size": 0.3,
+      "damping": 0.5
+    },
+    "eq": {
+      "enabled": true,
+      "low": 1.0,
+      "mid": 0.0,
+      "high": -0.5
+    },
+    "compressor": {
+      "enabled": true,
+      "threshold": -20.0,
+      "ratio": 3.0
+    }
+  },
+  "fallback": {
+    "behavior": "text_only",
+    "retry_count": 2
+  },
+  "animation_sync": {
+    "enabled": true,
+    "estimate_timing": true
+  },
+  "metadata": {
+    "language": "en",
+    "gender": "female",
+    "age": "adult",
+    "tags": ["english", "natural", "clear", "professional"]
+  }
+}
