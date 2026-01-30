@@ -63,11 +63,12 @@ class CompanionWindow(QMainWindow):
     
     def _setup_window(self):
         """Setup window flags and properties"""
-        # Frameless window
+        # Frameless window with click-through
         self.setWindowFlags(
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint |
-            Qt.Tool  # Don't show in taskbar
+            Qt.Tool |  # Don't show in taskbar
+            Qt.WindowTransparentForInput  # Allow clicks to pass through transparent areas
         )
         
         # Transparent background
@@ -154,48 +155,7 @@ class CompanionWindow(QMainWindow):
         
         shell_menu.addSeparator()
         
-        # 3D Model Controls submenu
-        model_menu = QMenu("3D Model Controls", shell_menu)
-        
-        # Zoom controls
-        zoom_in_action = QAction("Zoom In", self)
-        zoom_in_action.triggered.connect(self.zoom_in)
-        model_menu.addAction(zoom_in_action)
-        
-        zoom_out_action = QAction("Zoom Out", self)
-        zoom_out_action.triggered.connect(self.zoom_out)
-        model_menu.addAction(zoom_out_action)
-        
-        reset_zoom_action = QAction("Reset Zoom", self)
-        reset_zoom_action.triggered.connect(self.reset_zoom)
-        model_menu.addAction(reset_zoom_action)
-        
-        model_menu.addSeparator()
-        
-        # Position controls
-        move_up_action = QAction("Move Up", self)
-        move_up_action.triggered.connect(self.move_model_up)
-        model_menu.addAction(move_up_action)
-        
-        move_down_action = QAction("Move Down", self)
-        move_down_action.triggered.connect(self.move_model_down)
-        model_menu.addAction(move_down_action)
-        
-        move_left_action = QAction("Move Left", self)
-        move_left_action.triggered.connect(self.move_model_left)
-        model_menu.addAction(move_left_action)
-        
-        move_right_action = QAction("Move Right", self)
-        move_right_action.triggered.connect(self.move_model_right)
-        model_menu.addAction(move_right_action)
-        
-        reset_position_action = QAction("Reset Position", self)
-        reset_position_action.triggered.connect(self.reset_position)
-        model_menu.addAction(reset_position_action)
-        
-        shell_menu.addMenu(model_menu)
-        
-        shell_menu.addSeparator()
+        # 3D Model Controls removed - use Manipulate Model toggle instead
         
         # Input Mode submenu
         input_menu = QMenu("Input Mode", shell_menu)
@@ -937,6 +897,11 @@ class CompanionWindow(QMainWindow):
         self.manipulate_action.setChecked(self.manipulate_mode)
         
         if self.manipulate_mode:
+            # Disable click-through to allow interaction
+            flags = self.windowFlags()
+            flags &= ~Qt.WindowTransparentForInput
+            self.setWindowFlags(flags)
+            self.show()
             logger.info("Manipulate mode enabled - use mouse to rotate/pan/zoom model")
             self.tray_icon.showMessage(
                 "Manipulate Mode",
@@ -945,6 +910,11 @@ class CompanionWindow(QMainWindow):
                 3000
             )
         else:
+            # Re-enable click-through
+            flags = self.windowFlags()
+            flags |= Qt.WindowTransparentForInput
+            self.setWindowFlags(flags)
+            self.show()
             logger.info("Manipulate mode disabled")
     
     def enable_interaction(self):

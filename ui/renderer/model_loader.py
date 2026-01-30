@@ -9,6 +9,7 @@ from OpenGL.GLU import *
 from typing import Dict, List, Optional, Tuple, Any
 from loguru import logger
 import struct
+import base64
 
 
 class Bone:
@@ -50,6 +51,9 @@ class Mesh:
         self.indices = np.array([], dtype=np.uint32)
         self.bone_weights = []
         self.bone_indices = []
+        
+        # Material properties
+        self.color = (0.8, 0.8, 0.8, 1.0)  # Default light gray color
         
         # OpenGL buffers
         self.vao = None
@@ -99,17 +103,38 @@ class Mesh:
     
     def render(self):
         """Render the mesh"""
+        # Enable texturing if we have a texture
+        if self.texture_id:
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, self.texture_id)
+            # Use white color with texture so texture colors show through
+            glColor4f(1.0, 1.0, 1.0, 1.0)
+        else:
+            # Apply material color if no texture
+            glDisable(GL_TEXTURE_2D)
+            glColor4f(*self.color)
+        
         if self.use_immediate_mode:
             # Use immediate mode for compatibility
             glBegin(GL_TRIANGLES)
             for i in range(0, len(self.indices), 3):
                 for j in range(3):
                     idx = self.indices[i + j]
+                    # Apply texture coordinates if available
+                    if self.texture_id and len(self.uvs) > idx * 2:
+                        glTexCoord2f(self.uvs[idx*2], self.uvs[idx*2+1])
+                    # Apply normal
                     if len(self.normals) > idx * 3:
                         glNormal3f(self.normals[idx*3], self.normals[idx*3+1], self.normals[idx*3+2])
+                    # Apply vertex
                     if len(self.vertices) > idx * 3:
                         glVertex3f(self.vertices[idx*3], self.vertices[idx*3+1], self.vertices[idx*3+2])
             glEnd()
+            
+            # Disable texture after rendering
+            if self.texture_id:
+                glBindTexture(GL_TEXTURE_2D, 0)
+                glDisable(GL_TEXTURE_2D)
             return
         
         # Modern OpenGL path
@@ -142,7 +167,8 @@ class Model3D:
     def add_mesh(self, mesh: Mesh):
         """Add mesh to model"""
         self.meshes.append(mesh)
-        mesh.setup_gl_buffers()
+        # Don't setup GL buffers here - that requires OpenGL context
+        # Buffers will be set up during rendering initialization
     
     def add_bone(self, bone: Bone):
         """Add bone to skeleton"""
@@ -192,10 +218,168 @@ class ModelLoader:
     """
     
     @staticmethod
+    def _get_accessor_data(gltf, accessor_idx: int) -> Optional[np.ndarray]:
+        """
+        Extract data from a GLTF accessor
+        Handles buffer views and binary data parsing
+        """
+        try:
+            accessor = gltf.accessors[accessor_idx]
+            buffer_view = gltf.bufferViews[accessor.bufferView]
+            buffer = gltf.buffers[buffer_view.buffer]
+            
+            # Get the buffer data
+            if hasattr(gltf, '_glb_data') and gltf._glb_data:
+                # GLB file with embedded binary data
+                buffer_data = gltf._glb_data
+            elif buffer.uri:
+                if buffer.uri.startswith('data:'):
+                    # Data URI format
+                    data_uri = buffer.uri
+                    # Extract base64 data after the comma
+                    base64_data = data_uri.split(',', 1)[1]
+                    buffer_data = base64.b64decode(base64_data)
+                else:
+                    logger.error("External buffer files not supported")
+                    return None
+            else:
+                logger.error("No buffer data found")
+                return None
+            
+            # Calculate byte offset
+            byte_offset = (buffer_view.byteOffset or 0) + (accessor.byteOffset or 0)
+            
+            # Map GLTF component types to numpy dtypes
+            component_type_map = {
+                5120: np.int8,    # BYTE
+                5121: np.uint8,   # UNSIGNED_BYTE
+                5122: np.int16,   # SHORT
+                5123: np.uint16,  # UNSIGNED_SHORT
+                5125: np.uint32,  # UNSIGNED_INT
+                5126: np.float32, # FLOAT
+            }
+            
+            dtype = component_type_map.get(accessor.componentType)
+            if dtype is None:
+                logger.error(f"Unsupported component type: {accessor.componentType}")
+                return None
+            
+            # Map GLTF types to component counts
+            type_component_count = {
+                'SCALAR': 1,
+                'VEC2': 2,
+                'VEC3': 3,
+                'VEC4': 4,
+                'MAT2': 4,
+                'MAT3': 9,
+                'MAT4': 16,
+            }
+            
+            components = type_component_count.get(accessor.type, 1)
+            
+            # Extract the data
+            element_size = np.dtype(dtype).itemsize * components
+            total_size = element_size * accessor.count
+            
+            data_bytes = buffer_data[byte_offset:byte_offset + total_size]
+            data = np.frombuffer(data_bytes, dtype=dtype)
+            
+            # Reshape to (count, components)
+            if components > 1:
+                data = data.reshape((accessor.count, components))
+            
+            return data
+            
+        except Exception as e:
+            logger.error(f"Error extracting accessor data: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
+    
+    @staticmethod
+    def _load_texture(gltf, texture_idx: int) -> Optional[int]:
+        """
+        Load texture from GLTF and create OpenGL texture
+        Returns OpenGL texture ID
+        """
+        try:
+            from PIL import Image
+            import io
+            
+            texture = gltf.textures[texture_idx]
+            image_idx = texture.source
+            image = gltf.images[image_idx]
+            
+            # Get image data
+            if image.bufferView is not None:
+                # Image data is embedded in buffer
+                buffer_view = gltf.bufferViews[image.bufferView]
+                buffer = gltf.buffers[buffer_view.buffer]
+                
+                # Get buffer data
+                if hasattr(gltf, '_glb_data') and gltf._glb_data:
+                    buffer_data = gltf._glb_data
+                elif buffer.uri and buffer.uri.startswith('data:'):
+                    data_uri = buffer.uri
+                    base64_data = data_uri.split(',', 1)[1]
+                    buffer_data = base64.b64decode(base64_data)
+                else:
+                    logger.error("Cannot access buffer data for texture")
+                    return None
+                
+                # Extract image bytes
+                byte_offset = buffer_view.byteOffset or 0
+                byte_length = buffer_view.byteLength
+                image_bytes = buffer_data[byte_offset:byte_offset + byte_length]
+                
+                # Load image with PIL
+                img = Image.open(io.BytesIO(image_bytes))
+            elif image.uri:
+                # External image file (not common in GLB/VRM)
+                logger.warning(f"External image URI not supported: {image.uri}")
+                return None
+            else:
+                logger.error("No image data found")
+                return None
+            
+            # Convert to RGBA
+            img = img.convert('RGBA')
+            img_data = img.tobytes()
+            width, height = img.size
+            
+            # Create OpenGL texture
+            tex_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, tex_id)
+            
+            # Set texture parameters
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            
+            # Upload texture data
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+            glGenerateMipmap(GL_TEXTURE_2D)
+            
+            glBindTexture(GL_TEXTURE_2D, 0)
+            
+            logger.info(f"Loaded texture: {width}x{height}")
+            return tex_id
+            
+        except ImportError:
+            logger.error("PIL/Pillow not installed. Install with: pip install Pillow")
+            return None
+        except Exception as e:
+            logger.error(f"Error loading texture: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
+    
+    @staticmethod
     def load_gltf(filepath: str) -> Optional[Model3D]:
         """
         Load GLTF/GLB model
-        This is a simplified loader - production should use pygltflib or similar
+        Properly parses vertex data from GLTF buffers
         """
         try:
             import os
@@ -207,63 +391,101 @@ class ModelLoader:
             
             logger.info(f"Loading GLTF/GLB/VRM model: {filepath}")
             
-            # VRM files are GLB format (binary GLTF) with VRM extensions
-            # Read the file in binary mode first, then let pygltflib parse it
-            try:
-                with open(filepath, 'rb') as f:
-                    file_content = f.read()
-                
-                # Check if it's binary GLB format (starts with glTF magic number)
-                if file_content[:4] == b'glTF':
-                    logger.info("Detected binary GLB/VRM format")
-                    gltf = GLTF2.load_from_bytes(file_content)
-                else:
-                    logger.info("Detected JSON GLTF format")
-                    gltf = GLTF2.load(filepath)
-                
-                logger.info("Successfully loaded GLTF model")
-            except Exception as e:
-                logger.error(f"Failed to parse GLTF data: {e}")
-                # Fallback to direct file load
+            # Load the GLTF file
+            # For GLB/VRM files, we need to load binary data
+            with open(filepath, 'rb') as f:
+                file_data = f.read()
+            
+            # Check if it's a GLB file (binary GLTF)
+            if file_data[:4] == b'glTF':
+                logger.info("Loading as binary GLB/VRM format")
+                gltf = GLTF2.load_from_bytes(file_data)
+            else:
+                logger.info("Loading as JSON GLTF format")
                 gltf = GLTF2.load(filepath)
+            
+            logger.info("Successfully loaded GLTF model")
             
             model = Model3D()
             
-            logger.info(f"Meshes: {len(gltf.meshes)}, Nodes: {len(gltf.nodes)}")
+            logger.info(f"Meshes: {len(gltf.meshes)}, Nodes: {len(gltf.nodes)}, Buffers: {len(gltf.buffers)}")
             
-            # Load meshes (simplified - using placeholder for now)
-            # TODO: Properly parse GLTF accessors, buffer views, and buffers
+            # Parse each mesh
             mesh_count = 0
             for gltf_mesh in gltf.meshes:
                 for primitive in gltf_mesh.primitives:
                     mesh = Mesh()
                     
-                    # TEMPORARY: Use placeholder cube until proper GLTF parsing is implemented
-                    # Real implementation needs to:
-                    # 1. Get accessor from primitive.attributes['POSITION']
-                    # 2. Get buffer view from accessor
-                    # 3. Extract binary data from gltf.buffers
-                    # 4. Decode based on accessor type/componentType
+                    try:
+                        # Get vertex positions
+                        if 'POSITION' in primitive.attributes.__dict__:
+                            position_accessor_idx = primitive.attributes.POSITION
+                            position_data = ModelLoader._get_accessor_data(gltf, position_accessor_idx)
+                            if position_data is not None:
+                                mesh.vertices = position_data.flatten().astype(np.float32)
+                        
+                        # Get normals
+                        if 'NORMAL' in primitive.attributes.__dict__:
+                            normal_accessor_idx = primitive.attributes.NORMAL
+                            normal_data = ModelLoader._get_accessor_data(gltf, normal_accessor_idx)
+                            if normal_data is not None:
+                                mesh.normals = normal_data.flatten().astype(np.float32)
+                        
+                        # Get UVs
+                        if 'TEXCOORD_0' in primitive.attributes.__dict__:
+                            uv_accessor_idx = primitive.attributes.TEXCOORD_0
+                            uv_data = ModelLoader._get_accessor_data(gltf, uv_accessor_idx)
+                            if uv_data is not None:
+                                mesh.uvs = uv_data.flatten().astype(np.float32)
+                        
+                        # Load material/texture if available
+                        if primitive.material is not None:
+                            try:
+                                material = gltf.materials[primitive.material]
+                                # Get base color from material
+                                if material.pbrMetallicRoughness:
+                                    if material.pbrMetallicRoughness.baseColorFactor:
+                                        color = material.pbrMetallicRoughness.baseColorFactor
+                                        mesh.color = tuple(color) if len(color) == 4 else (color[0], color[1], color[2], 1.0)
+                                        logger.debug(f"Loaded material color: {mesh.color}")
+                                    
+                                    # Load texture
+                                    if material.pbrMetallicRoughness.baseColorTexture:
+                                        texture_idx = material.pbrMetallicRoughness.baseColorTexture.index
+                                        mesh.texture_id = ModelLoader._load_texture(gltf, texture_idx)
+                                        if mesh.texture_id:
+                                            logger.info(f"Loaded texture {texture_idx} for mesh")
+                            except Exception as e:
+                                logger.debug(f"Could not load material: {e}")
+                        
+                        # Get indices
+                        if primitive.indices is not None:
+                            indices_data = ModelLoader._get_accessor_data(gltf, primitive.indices)
+                            if indices_data is not None:
+                                mesh.indices = indices_data.flatten().astype(np.uint32)
+                        
+                        # If no indices, generate them
+                        if len(mesh.indices) == 0 and len(mesh.vertices) > 0:
+                            vertex_count = len(mesh.vertices) // 3
+                            mesh.indices = np.arange(vertex_count, dtype=np.uint32)
+                        
+                        # Only add mesh if it has vertices
+                        if len(mesh.vertices) > 0:
+                            mesh.use_immediate_mode = True  # Use immediate mode for compatibility
+                            model.add_mesh(mesh)
+                            mesh_count += 1
+                            logger.info(f"Loaded mesh {mesh_count}: {len(mesh.vertices)//3} vertices, {len(mesh.indices)} indices")
                     
-                    mesh.vertices = np.array([
-                        # Placeholder cube vertices
-                        -0.5, -0.5, -0.5,  0.5, -0.5, -0.5,  0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
-                        -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,  0.5,  0.5, -0.5,  0.5,  0.5
-                    ], dtype=np.float32)
-                    
-                    mesh.indices = np.array([
-                        0,1,2, 0,2,3,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
-                        2,3,7, 2,7,6,  0,3,7, 0,7,4,  1,2,6, 1,6,5
-                    ], dtype=np.uint32)
-                    
-                    model.add_mesh(mesh)
-                    mesh_count += 1
+                    except Exception as e:
+                        logger.error(f"Error parsing mesh primitive: {e}")
+                        continue
             
-            logger.warning(f"VRM loaded with {mesh_count} placeholder meshes. Actual vertex data parsing not yet implemented.")
-            logger.info("Falling back to simple character until GLTF buffer parsing is added.")
-            
-            # For now, return simple character instead of placeholder
-            return ModelLoader.create_simple_character()
+            if mesh_count > 0:
+                logger.info(f"Successfully loaded VRM with {mesh_count} meshes")
+                return model
+            else:
+                logger.warning("No valid meshes found in GLTF file, falling back to simple character")
+                return ModelLoader.create_simple_character()
             
         except ImportError:
             logger.error("pygltflib not installed. Install with: pip install pygltflib")

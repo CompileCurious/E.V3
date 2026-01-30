@@ -53,13 +53,20 @@ events:
 
 # LLM settings
 llm:
+  mode: "fast"  # "fast" or "deep" - switch between Phi-3 and Mistral
   local:
     enabled: true
-    model: "mistral-7b-instruct-v0.2.Q4_K_M.gguf"
     model_path: "models/llm/"
+    # Fast mode: Quick responses for general conversation (like Copilot)
+    fast_model: "Phi-3-mini-4k-instruct-q4.gguf"
+    fast_max_tokens: 150
+    fast_temperature: 0.7
+    # Deep thinking mode: Detailed reasoning and complex tasks
+    deep_model: "mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+    deep_max_tokens: 512
+    deep_temperature: 0.8
+    # Common settings
     context_length: 4096
-    temperature: 0.7
-    max_tokens: 256
     # Use GPU if available
     use_gpu: true
     gpu_layers: 35
@@ -116,11 +123,11 @@ ui:
     # Path to 3D model (leave empty to use simple test character)
     model_path: "models/character/E.V3.vrm"
     # Scale
-    scale: 1.0
+    scale: 0.6
     # Initial rotation
     rotation: [0, 0, 0]
-    # Initial position
-    position: [0, 0, 0]
+    # Initial position (X, Y, Z) - Y is vertical, negative moves down
+    position: [0, -1.2, 0]
   
   animations:
     # Idle animations

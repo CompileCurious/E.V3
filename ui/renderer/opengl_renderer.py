@@ -53,11 +53,12 @@ class OpenGLRenderer(QOpenGLWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("background: transparent;")
         
-        # Setup timer for animation
+        # Setup timer for animation (disabled by default to prevent spinning)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)
         fps = self.config.get("rendering", {}).get("fps", 60)
-        self.timer.start(1000 // fps)
+        # Don't auto-start - prevents unwanted rotation
+        # self.timer.start(1000 // fps)
         
         logger.info("OpenGL renderer initialized")
     

@@ -26,32 +26,43 @@ class LLMBase(ABC):
 
 class LocalLLM(LLMBase):
     """
-    Local Mistral 7B using llama.cpp
+    Local LLM using llama.cpp with dual mode support
+    Fast mode: Phi-3 for quick responses
+    Deep mode: Mistral 7B for detailed reasoning
     Privacy: All processing happens locally, no external calls
     """
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.model = None
+        self.current_mode = config.get("mode", "fast")  # Default to fast mode
         self._initialize_model()
     
     def _initialize_model(self):
-        """Initialize the local LLM model"""
+        """Initialize the local LLM model based on current mode"""
         try:
             from llama_cpp import Llama
             
             model_path = self.config.get("model_path", "models/llm/")
-            model_file = self.config.get("model", "mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+            
+            # Determine which model to load based on mode
+            mode = self.config.get("mode", "fast")
+            if mode == "fast":
+                model_file = self.config.get("fast_model", "Phi-3-mini-4k-instruct-q4.gguf")
+            else:
+                model_file = self.config.get("deep_model", "mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+            
             full_path = os.path.join(model_path, model_file)
             
             if not os.path.exists(full_path):
                 logger.warning(f"Model file not found: {full_path}")
-                logger.info("Please download the model from: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF")
+                logger.info(f"Please download the model or run: python tools/download_phi3.py")
                 return
             
             # Initialize model
             n_gpu_layers = self.config.get("gpu_layers", 35) if self.config.get("use_gpu", True) else 0
             
+            logger.info(f"Loading {mode} mode LLM: {model_file}")
             self.model = Llama(
                 model_path=full_path,
                 n_ctx=self.config.get("context_length", 4096),
@@ -66,7 +77,7 @@ class LocalLLM(LLMBase):
         except Exception as e:
             logger.error(f"Failed to initialize local LLM: {e}")
     
-    def generate(self, prompt: str, max_tokens: int = 256) -> str:
+    def generate(self, prompt: str, max_tokens: int = None) -> str:
         """
         Generate response from prompt
         Privacy: No data leaves the machine
@@ -75,11 +86,23 @@ class LocalLLM(LLMBase):
             return "Local LLM not available."
         
         try:
+            # Use mode-specific max_tokens if not specified
+            if max_tokens is None:
+                mode = self.config.get("mode", "fast")
+                if mode == "fast":
+                    max_tokens = self.config.get("fast_max_tokens", 150)
+                else:
+                    max_tokens = self.config.get("deep_max_tokens", 512)
+            
+            # Use mode-specific temperature
+            mode = self.config.get("mode", "fast")
+            temperature = self.config.get("fast_temperature" if mode == "fast" else "deep_temperature", 0.7)
+            
             response = self.model(
                 prompt,
                 max_tokens=max_tokens,
-                temperature=self.config.get("temperature", 0.7),
-                stop=["</s>", "[/INST]"],
+                temperature=temperature,
+                stop=["</s>", "[/INST]", "<|end|>", "<|endoftext|>"],
                 echo=False
             )
             
@@ -89,7 +112,7 @@ class LocalLLM(LLMBase):
             logger.error(f"Error generating response: {e}")
             return "Error processing request."
     
-    def chat(self, messages: List[Dict[str, str]], max_tokens: int = 256) -> str:
+    def chat(self, messages: List[Dict[str, str]], max_tokens: int = None) -> str:
         """
         Generate chat response
         Privacy: All processing local

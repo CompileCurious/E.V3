@@ -144,7 +144,7 @@ class ModulesWindow(QMainWindow):
         layout.addWidget(title)
         
         # Description
-        desc = QLabel("Click on components of E.V3's frame to select modules")
+        desc = QLabel("Configure AI models using the buttons below\n(Clickable body parts coming soon)")
         desc.setStyleSheet("""
             QLabel {
                 font-size: 12px;
@@ -154,6 +154,9 @@ class ModulesWindow(QMainWindow):
         """)
         desc.setAlignment(Qt.AlignCenter)
         layout.addWidget(desc)
+        
+        # File picker buttons section
+        self._add_file_pickers(layout)
         
         # Graphics view for robot frame
         self.scene = QGraphicsScene()
@@ -167,8 +170,8 @@ class ModulesWindow(QMainWindow):
         # Draw robot frame
         self._draw_robot_frame()
         
-        # Add clickable regions
-        self._add_clickable_regions()
+        # Add clickable regions (not working yet)
+        # self._add_clickable_regions()
         
         # Terminal-style commit widget
         terminal_widget = QWidget()
@@ -217,6 +220,142 @@ class ModulesWindow(QMainWindow):
         
         # Track pending changes
         self.pending_changes = {}
+    
+    def _add_file_pickers(self, layout):
+        """Add file picker buttons for module configuration"""
+        from PySide6.QtWidgets import QPushButton, QGroupBox, QComboBox
+        
+        # LLM Configuration Group
+        llm_group = QGroupBox("🧠 AI Brain (LLM)")
+        llm_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 13px;
+                font-weight: bold;
+                color: #64B5F6;
+                border: 2px solid #444;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        llm_layout = QVBoxLayout(llm_group)
+        
+        # Mode selector
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel("Mode:")
+        mode_label.setStyleSheet("color: #aaa; font-weight: normal;")
+        self.llm_mode_combo = QComboBox()
+        self.llm_mode_combo.addItems(["Fast (Phi-3)", "Deep Thinking (Mistral)"])
+        self.llm_mode_combo.setStyleSheet("""
+            QComboBox {
+                background: #333;
+                color: #64B5F6;
+                border: 1px solid #555;
+                padding: 5px;
+                border-radius: 3px;
+            }
+        """)
+        self.llm_mode_combo.currentIndexChanged.connect(self._on_llm_mode_changed)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.llm_mode_combo)
+        mode_layout.addStretch()
+        llm_layout.addLayout(mode_layout)
+        
+        # Fast model picker
+        fast_btn = QPushButton("📁 Select Fast Model (Phi-3)")
+        fast_btn.setStyleSheet(self._button_style())
+        fast_btn.clicked.connect(lambda: self._select_model("fast"))
+        llm_layout.addWidget(fast_btn)
+        
+        # Deep model picker
+        deep_btn = QPushButton("📁 Select Deep Model (Mistral)")
+        deep_btn.setStyleSheet(self._button_style())
+        deep_btn.clicked.connect(lambda: self._select_model("deep"))
+        llm_layout.addWidget(deep_btn)
+        
+        layout.addWidget(llm_group)
+        
+        # Character Model Group
+        char_group = QGroupBox("💫 3D Character Model")
+        char_group.setStyleSheet(llm_group.styleSheet())
+        char_layout = QVBoxLayout(char_group)
+        
+        char_btn = QPushButton("📁 Select Character Model (.vrm/.glb)")
+        char_btn.setStyleSheet(self._button_style())
+        char_btn.clicked.connect(lambda: self._select_model("character"))
+        char_layout.addWidget(char_btn)
+        
+        layout.addWidget(char_group)
+    
+    def _button_style(self):
+        """Return consistent button styling"""
+        return """
+            QPushButton {
+                background: #2a2a2a;
+                color: #64B5F6;
+                border: 1px solid #555;
+                padding: 8px;
+                border-radius: 3px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background: #3a3a3a;
+                border: 1px solid #64B5F6;
+            }
+            QPushButton:pressed {
+                background: #1a1a1a;
+            }
+        """
+    
+    def _on_llm_mode_changed(self, index):
+        """Handle LLM mode change"""
+        mode = "fast" if index == 0 else "deep"
+        self.pending_changes["llm_mode"] = mode
+        logger.info(f"LLM mode changed to: {mode}")
+    
+    def _select_model(self, model_type):
+        """Open file picker for model selection"""
+        if model_type == "fast":
+            title = "Select Fast LLM Model (Phi-3)"
+            folder = "models/llm"
+            filter_str = "GGUF Models (*.gguf);;All Files (*.*)"
+            config_key = "fast_model"
+        elif model_type == "deep":
+            title = "Select Deep LLM Model (Mistral)"
+            folder = "models/llm"
+            filter_str = "GGUF Models (*.gguf);;All Files (*.*)"
+            config_key = "deep_model"
+        elif model_type == "character":
+            title = "Select 3D Character Model"
+            folder = "models/character"
+            filter_str = "3D Models (*.vrm *.glb *.gltf);;All Files (*.*)"
+            config_key = "character_model"
+        else:
+            return
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            title,
+            folder,
+            filter_str
+        )
+        
+        if file_path:
+            # Store just the filename
+            import os
+            filename = os.path.basename(file_path)
+            self.pending_changes[config_key] = filename
+            logger.info(f"Selected {model_type} model: {filename}")
+            QMessageBox.information(
+                self,
+                "Model Selected",
+                f"{model_type.title()} model selected:\n{filename}\n\nType 'Y' in commit field to apply changes."
+            )
     
     def _center_window(self):
         """Center window on screen"""
@@ -300,8 +439,11 @@ class ModulesWindow(QMainWindow):
             # Add pixmap and center it in the scene
             pixmap_item = self.scene.addPixmap(pixmap)
             
-            # Set scene rect to match the pixmap size
-            self.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
+            # Move the image down so the face is visible (shift by 60 pixels down)
+            pixmap_item.setPos(0, -60)
+            
+            # Set scene rect to accommodate the shifted image
+            self.scene.setSceneRect(0, -60, pixmap.width(), pixmap.height())
             
             # Fit the view to show the entire scene
             self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
@@ -371,31 +513,87 @@ class ModulesWindow(QMainWindow):
         
         if response == 'Y':
             if self.pending_changes:
-                # Save all pending changes
+                # Save to main config.yaml
                 import yaml
-                config_file = os.path.join("config", "core_components.yaml")
+                config_file = "config/config.yaml"
                 
-                # Load existing config
-                if os.path.exists(config_file):
+                try:
+                    # Load existing config
                     with open(config_file, 'r') as f:
-                        config = yaml.safe_load(f) or {}
-                else:
-                    config = {}
+                        config = yaml.safe_load(f)
+                    
+                    # Update LLM settings
+                    if "llm_mode" in self.pending_changes:
+                        config["llm"]["mode"] = self.pending_changes["llm_mode"]
+                    
+                    if "fast_model" in self.pending_changes:
+                        config["llm"]["local"]["fast_model"] = self.pending_changes["fast_model"]
+                    
+                    if "deep_model" in self.pending_changes:
+                        config["llm"]["local"]["deep_model"] = self.pending_changes["deep_model"]
+                    
+                    if "character_model" in self.pending_changes:
+                        config["ui"]["model"]["model_path"] = f"models/character/{self.pending_changes['character_model']}"
+                    
+                    # Save updated config
+                    with open(config_file, 'w') as f:
+                        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                    
+                    self.commit_label.setText(f"✓ Committed {len(self.pending_changes)} change(s)")
+                    self.commit_label.setStyleSheet("""
+                        QLabel {
+                            font-family: 'Consolas', 'Courier New', monospace;
+                            font-size: 11px;
+                            color: #4CAF50;
+                            padding: 5px;
+                            background: #1a1a1a;
+                        }
+                    """)
+                    
+                    # Show success message
+                    QMessageBox.information(
+                        self,
+                        "Configuration Saved",
+                        f"Changes saved to {config_file}\n\nRestart E.V3 to apply changes."
+                    )
+                    
+                    # Clear pending changes
+                    self.pending_changes = {}
+                    
+                    # Reset label after delay
+                    QTimer.singleShot(3000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
+                    QTimer.singleShot(3000, lambda: self.commit_label.setStyleSheet("""
+                        QLabel {
+                            font-family: 'Consolas', 'Courier New', monospace;
+                            font-size: 11px;
+                            color: #64B5F6;
+                            padding: 5px;
+                            background: #1a1a1a;
+                        }
+                    """))
+                    
+                    logger.info("Module configuration committed successfully")
                 
-                # Update with pending changes
-                config.update(self.pending_changes)
-                
-                # Save configuration
-                os.makedirs(os.path.dirname(config_file), exist_ok=True)
-                with open(config_file, 'w') as f:
-                    yaml.dump(config, f, default_flow_style=False)
-                
-                self.commit_label.setText(f"✓ Committed {len(self.pending_changes)} module(s)")
+                except Exception as e:
+                    logger.error(f"Failed to save configuration: {e}")
+                    QMessageBox.critical(
+                        self,
+                        "Save Failed",
+                        f"Failed to save configuration:\n{str(e)}"
+                    )
+            else:
+                self.commit_label.setText("⚠ No pending changes")
+                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
+        
+        elif response == 'N':
+            # Cancel pending changes
+            if self.pending_changes:
+                self.commit_label.setText(f"✗ Cancelled {len(self.pending_changes)} change(s)")
                 self.commit_label.setStyleSheet("""
                     QLabel {
                         font-family: 'Consolas', 'Courier New', monospace;
                         font-size: 11px;
-                        color: #4CAF50;
+                        color: #FF5252;
                         padding: 5px;
                         background: #1a1a1a;
                     }
@@ -403,7 +601,6 @@ class ModulesWindow(QMainWindow):
                 self.pending_changes = {}
                 
                 # Reset after 2 seconds
-                from PySide6.QtCore import QTimer
                 QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
                 QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
                     QLabel {
@@ -416,73 +613,12 @@ class ModulesWindow(QMainWindow):
                 """))
             else:
                 self.commit_label.setText("⚠ No pending changes")
-                self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #FFA726;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """)
-                from PySide6.QtCore import QTimer
                 QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
-                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #64B5F6;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """))
-        elif response == 'N':
-            if self.pending_changes:
-                count = len(self.pending_changes)
-                self.pending_changes = {}
-                self.commit_label.setText(f"✗ Discarded {count} change(s)")
-                self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #EF5350;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """)
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
-                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #64B5F6;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """))
-            else:
-                self.commit_label.setText("⚠ No pending changes")
-                self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #FFA726;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """)
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(2000, lambda: self.commit_label.setText("commit_to_modules? (Y/N)"))
-                QTimer.singleShot(2000, lambda: self.commit_label.setStyleSheet("""
-                    QLabel {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
-                        color: #64B5F6;
-                        padding: 5px;
-                        background: #1a1a1a;
-                    }
-                """))
+    
+    def _handle_component_click(self, component_type: str):
+        """Handle click on robot frame component (not implemented yet)"""
+        logger.info(f"Component clicked: {component_type}")
+        # Will implement when clickable regions are working
     
     def select_component(self, component_type: str):
         """Open file picker for component selection"""
