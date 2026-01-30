@@ -3,7 +3,7 @@
 A privacy-first desktop companion with a 3D animated character, built on a **microkernel architecture** with isolated capability modules.
 
 ![E.V3 Screenshot](assets/ev3_screenshot.png)
-*E.V3 with VRM character rendering and chat interface*
+  *E.V3 with VRM character rendering and chat interface*
 
 ## Features
 
