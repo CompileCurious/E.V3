@@ -53,12 +53,16 @@ class OpenGLRenderer(QOpenGLWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("background: transparent;")
         
-        # Setup timer for animation (disabled by default to prevent spinning)
+        # Idle animation state
+        self.idle_animation_enabled = True
+        self.breathing_phase = 0.0
+        
+        # Setup timer for animation
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)
         fps = self.config.get("rendering", {}).get("fps", 60)
-        # Don't auto-start - prevents unwanted rotation
-        # self.timer.start(1000 // fps)
+        # Start with idle animation enabled
+        self.timer.start(1000 // fps)
         
         logger.info("OpenGL renderer initialized")
     
@@ -119,9 +123,36 @@ class OpenGLRenderer(QOpenGLWidget):
         glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
         glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
         
-        # Render model
+        # Render model with idle animation
         if self.model:
+            glPushMatrix()
+            
+            # Apply model position, rotation, scale first
+            glTranslatef(self.model.position[0], self.model.position[1], self.model.position[2])
+            glRotatef(self.model.rotation[1], 0.0, 1.0, 0.0)
+            glRotatef(self.model.rotation[0], 1.0, 0.0, 0.0)
+            glRotatef(self.model.rotation[2], 0.0, 0.0, 1.0)
+            
+            # Apply idle animation (gentle breathing/sway)
+            if self.idle_animation_enabled:
+                # Breathing scale - more visible
+                breath_scale = 1.0 + 0.05 * np.sin(self.breathing_phase)
+                # Sway rotation - more visible
+                sway_angle = 5.0 * np.sin(self.breathing_phase * 0.7)
+                
+                glRotatef(sway_angle, 0.0, 1.0, 0.0)  # Gentle left-right sway
+                glScalef(
+                    self.model.scale * breath_scale,
+                    self.model.scale * breath_scale,
+                    self.model.scale * breath_scale
+                )
+            else:
+                glScalef(self.model.scale, self.model.scale, self.model.scale)
+            
+            # Render the model (all meshes)
             self.model.render()
+            
+            glPopMatrix()
         
         glFlush()
     
@@ -167,6 +198,13 @@ class OpenGLRenderer(QOpenGLWidget):
         # Increment animation time
         dt = 1.0 / self.config.get("rendering", {}).get("fps", 60)
         self.animation_time += dt * self.animation_speed
+        
+        # Update idle breathing animation (slow, gentle)
+        if self.idle_animation_enabled:
+            self.breathing_phase += dt * 2.0  # 2 radians per second = ~0.3 breaths/sec
+            # Log occasionally to verify animation is running
+            if int(self.breathing_phase) % 5 == 0 and int(self.breathing_phase * 10) % 10 == 0:
+                logger.debug(f"Idle animation: phase={self.breathing_phase:.2f}")
         
         # Update model animations
         if self.model:

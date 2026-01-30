@@ -189,17 +189,8 @@ class Model3D:
             bone.calculate_transform()
     
     def render(self):
-        """Render the model"""
+        """Render the model - transformations should be handled by caller"""
         from OpenGL.GL import glColor4f
-        
-        glPushMatrix()
-        
-        # Apply model transformations
-        glTranslatef(*self.position)
-        glRotatef(self.rotation[0], 1, 0, 0)
-        glRotatef(self.rotation[1], 0, 1, 0)
-        glRotatef(self.rotation[2], 0, 0, 1)
-        glScalef(self.scale, self.scale, self.scale)
         
         # Set a visible color for the test character (light blue)
         glColor4f(0.3, 0.7, 1.0, 1.0)
@@ -207,8 +198,6 @@ class Model3D:
         # Render all meshes
         for mesh in self.meshes:
             mesh.render()
-        
-        glPopMatrix()
 
 
 class ModelLoader:

@@ -1174,12 +1174,15 @@ class ChatWindow(QDialog):
         title.setStyleSheet("font-size: 16px; font-weight: bold; color: #3a7bd5;")
         layout.addWidget(title)
         
-        # Chat history display
-        self.chat_history = QLabel("")
-        self.chat_history.setWordWrap(True)
-        self.chat_history.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        # Chat history display with scroll support
+        from PySide6.QtWidgets import QTextEdit
+        self.chat_history = QTextEdit()
+        self.chat_history.setReadOnly(True)
+        self.chat_history.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.chat_history.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.chat_history.setFixedHeight(320)
         self.chat_history.setStyleSheet("""
-            QLabel {
+            QTextEdit {
                 background: #2a2a2a;
                 border: 1px solid #444444;
                 border-radius: 5px;
@@ -1187,19 +1190,24 @@ class ChatWindow(QDialog):
                 color: #e0e0e0;
                 font-size: 12px;
             }
+            QScrollBar:vertical {
+                background: #2a2a2a;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3a7bd5;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #4a8be5;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
         """)
-        
-        # Scroll area for chat history
-        history_frame = QFrame()
-        history_frame.setFixedHeight(320)
-        history_layout = QVBoxLayout(history_frame)
-        history_layout.setContentsMargins(0, 0, 0, 0)
-        history_layout.addWidget(self.chat_history)
-        layout.addWidget(history_frame)
-        
-        # Input area
-        input_label = QLabel("Your message:")
-        layout.addWidget(input_label)
+        layout.addWidget(self.chat_history)
         
         # Input field
         self.input_field = QLineEdit()
@@ -1209,7 +1217,8 @@ class ChatWindow(QDialog):
         
         # Send button
         send_button = QPushButton("Send")
-        send_button.clicked.connect(self._send_message)
+        send_button.clicked.connect(self._on_send_clicked)
+        layout.addWidget(send_button)
         layout.addWidget(send_button)
         
         # Info label
@@ -1219,6 +1228,12 @@ class ChatWindow(QDialog):
         layout.addWidget(info_label)
         
         self.chat_messages = []
+    
+    def _on_send_clicked(self):
+        """Handle Send button click - separate from Enter key"""
+        # Only send if input field is not already processing
+        if self.input_field.text().strip():
+            self._send_message()
     
     def _send_message(self):
         """Send message from input field"""
@@ -1265,7 +1280,14 @@ class ChatWindow(QDialog):
             self.chat_messages = self.chat_messages[-10:]
         
         history_text = "<br><br>".join(self.chat_messages)
-        self.chat_history.setText(history_text)
+        self.chat_history.setHtml(history_text)
+        
+        # Auto-scroll to bottom
+        from PySide6.QtGui import QTextCursor
+        cursor = self.chat_history.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.chat_history.setTextCursor(cursor)
+        self.chat_history.ensureCursorVisible()
     
     def focus_input(self):
         """Focus the input field"""
