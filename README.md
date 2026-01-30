@@ -6,9 +6,6 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 
 ![E.V3 Screenshot](assets/ev3_screenshot.png)
 
-*E.V3 with custom VRM character rendering and chat interface*
-=======
-
 *E.V3 with VRM character rendering and chat interface*
 
 
