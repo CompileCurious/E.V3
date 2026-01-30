@@ -149,122 +149,51 @@ class OpenGLRenderer(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
     
     def paintGL(self):
-        """Render scene with GPU skinning"""
+        """Render scene"""
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        # Build view matrix
-        view_matrix = np.eye(4, dtype=np.float32)
-        
-        # Camera translation (pull back)
-        view_matrix[3, 2] = -self.camera_distance
-        view_matrix[3, 0] = self.camera_pan_x
-        view_matrix[3, 1] = self.camera_pan_y
-        
-        # Camera rotation
-        rx = np.radians(self.camera_angle_x)
-        ry = np.radians(self.camera_angle_y)
-        
-        rot_x = np.array([
-            [1, 0, 0, 0],
-            [0, np.cos(rx), -np.sin(rx), 0],
-            [0, np.sin(rx), np.cos(rx), 0],
-            [0, 0, 0, 1]
-        ], dtype=np.float32)
-        
-        rot_y = np.array([
-            [np.cos(ry), 0, np.sin(ry), 0],
-            [0, 1, 0, 0],
-            [-np.sin(ry), 0, np.cos(ry), 0],
-            [0, 0, 0, 1]
-        ], dtype=np.float32)
-        
-        view_matrix = view_matrix @ rot_x @ rot_y
-        
-        # Build projection matrix
+        # Use legacy OpenGL rendering (stable and working)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
         aspect = self.width() / self.height() if self.height() > 0 else 1.0
-        fov = 45.0
-        near = 0.1
-        far = 100.0
+        gluPerspective(45.0, aspect, 0.1, 100.0)
         
-        f = 1.0 / np.tan(np.radians(fov) / 2.0)
-        projection_matrix = np.array([
-            [f / aspect, 0, 0, 0],
-            [0, f, 0, 0],
-            [0, 0, (far + near) / (near - far), -1],
-            [0, 0, (2 * far * near) / (near - far), 0]
-        ], dtype=np.float32)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
         
-        # Render model
+        # Setup camera with pan support
+        glTranslatef(self.camera_pan_x, self.camera_pan_y, -self.camera_distance)
+        glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
+        glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
+        
+        # Render model with idle animation
         if self.model:
-            # Build model matrix with idle animation
-            model_matrix = np.eye(4, dtype=np.float32)
+            glPushMatrix()
             
-            # Position
-            model_matrix[3, 0] = self.model.position[0]
-            model_matrix[3, 1] = self.model.position[1]
-            model_matrix[3, 2] = self.model.position[2]
+            # Apply model position
+            glTranslatef(self.model.position[0], self.model.position[1], self.model.position[2])
+            glRotatef(self.model.rotation[1], 0.0, 1.0, 0.0)
+            glRotatef(self.model.rotation[0], 1.0, 0.0, 0.0)
+            glRotatef(self.model.rotation[2], 0.0, 0.0, 1.0)
             
-            # Idle animation
+            # Apply idle animation (gentle breathing/sway)
             if self.idle_animation_enabled:
                 breath_scale = 1.0 + 0.03 * np.sin(self.breathing_phase)
-                sway_angle = np.radians(3.0 * np.sin(self.breathing_phase * 0.7))
+                sway_angle = 3.0 * np.sin(self.breathing_phase * 0.7)
                 
-                # Apply sway
-                sway_rot = np.array([
-                    [np.cos(sway_angle), 0, np.sin(sway_angle), 0],
-                    [0, 1, 0, 0],
-                    [-np.sin(sway_angle), 0, np.cos(sway_angle), 0],
-                    [0, 0, 0, 1]
-                ], dtype=np.float32)
-                
-                scale = self.model.scale * breath_scale
+                glRotatef(sway_angle, 0.0, 1.0, 0.0)
+                glScalef(
+                    self.model.scale * breath_scale,
+                    self.model.scale * breath_scale,
+                    self.model.scale * breath_scale
+                )
             else:
-                sway_rot = np.eye(4, dtype=np.float32)
-                scale = self.model.scale
+                glScalef(self.model.scale, self.model.scale, self.model.scale)
             
-            # Scale
-            scale_matrix = np.array([
-                [scale, 0, 0, 0],
-                [0, scale, 0, 0],
-                [0, 0, scale, 0],
-                [0, 0, 0, 1]
-            ], dtype=np.float32)
+            # Render the model
+            self.model.render()
             
-            model_matrix = model_matrix @ sway_rot @ scale_matrix
-            
-            # Combine into view matrix for rendering
-            combined_view = view_matrix @ model_matrix
-            
-            # Render with GPU skinning or fallback
-            if self.gpu_skinning_initialized and hasattr(self, 'supports_modern_gl') and self.supports_modern_gl:
-                self.model.render(combined_view, projection_matrix)
-            else:
-                # Legacy path - set up OpenGL matrices
-                glMatrixMode(GL_PROJECTION)
-                glLoadIdentity()
-                gluPerspective(45.0, aspect, 0.1, 100.0)
-                
-                glMatrixMode(GL_MODELVIEW)
-                glLoadIdentity()
-                glTranslatef(self.camera_pan_x, self.camera_pan_y, -self.camera_distance)
-                glRotatef(self.camera_angle_x, 1.0, 0.0, 0.0)
-                glRotatef(self.camera_angle_y, 0.0, 1.0, 0.0)
-                
-                glTranslatef(self.model.position[0], self.model.position[1], self.model.position[2])
-                
-                if self.idle_animation_enabled:
-                    breath_scale = 1.0 + 0.03 * np.sin(self.breathing_phase)
-                    sway_angle = 3.0 * np.sin(self.breathing_phase * 0.7)
-                    glRotatef(sway_angle, 0.0, 1.0, 0.0)
-                    glScalef(
-                        self.model.scale * breath_scale,
-                        self.model.scale * breath_scale,
-                        self.model.scale * breath_scale
-                    )
-                else:
-                    glScalef(self.model.scale, self.model.scale, self.model.scale)
-                
-                self.model.render()
+            glPopMatrix()
         
         glFlush()
     
