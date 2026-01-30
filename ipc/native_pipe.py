@@ -224,7 +224,8 @@ class IPCClient:
             return True
             
         except pywintypes.error as e:
-            logger.error(f"Failed to connect: {e}")
+            # Use debug level to avoid spamming logs during retries
+            logger.debug(f"Failed to connect to IPC server: {e}")
             return False
     
     def disconnect(self):

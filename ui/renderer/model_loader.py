@@ -152,9 +152,17 @@ class Mesh:
     
     def render(self, bone_matrices=None):
         """Render the mesh with optional skeletal animation"""
-        # For now, always use original vertices for stability and performance
-        # Skinned vertices can be enabled later when properly debugged
-        vertices_to_render = self.vertices  # self.skinned_vertices if self.skinned_vertices is not None else self.vertices
+        # Use skinned vertices if available (CPU skinning already applied)
+        if self.skinned_vertices is not None:
+            vertices_to_render = self.skinned_vertices
+        else:
+            vertices_to_render = self.vertices
+        
+        # Debug: Log first render
+        if not hasattr(self, '_first_render_logged'):
+            self._first_render_logged = True
+            has_skinning = self.skinned_vertices is not None
+            logger.info(f"Mesh first render: {len(vertices_to_render)} vertex components, {len(self.indices)} indices, immediate_mode={self.use_immediate_mode}, texture={self.texture_id}, skinned={has_skinning}")
         
         # Enable texturing if we have a texture
         if self.texture_id:
@@ -252,6 +260,10 @@ class Model3D:
             if not self.shader.initialize():
                 logger.error("Failed to initialize GPU skinning shader")
                 return False
+            
+            # Update skeleton to compute bone matrices before creating GPU meshes
+            self.update_skeleton()
+            logger.info(f"Updated skeleton - computed {len(self.bone_matrices)} bone matrices")
             
             # Create GPU meshes for all loaded meshes
             self.skinned_meshes = []
@@ -387,11 +399,15 @@ class Model3D:
     def render(self, view_matrix: np.ndarray = None, projection_matrix: np.ndarray = None):
         """Render the model using GPU skinning or legacy fallback"""
         
-        # Try GPU skinning first
-        if self.gpu_skinning_ready and self.shader and GPU_SKINNING_AVAILABLE:
-            self._render_gpu(view_matrix, projection_matrix)
-        else:
-            self._render_legacy()
+        # For now, use legacy rendering (GPU skinning needs debugging)
+        # TODO: Fix bone index mapping for GPU skinning
+        self._render_legacy()
+        
+        # # Try GPU skinning first
+        # if self.gpu_skinning_ready and self.shader and GPU_SKINNING_AVAILABLE:
+        #     self._render_gpu(view_matrix, projection_matrix)
+        # else:
+        #     self._render_legacy()
     
     def _render_gpu(self, view_matrix: np.ndarray = None, projection_matrix: np.ndarray = None):
         """Render with GPU skinning shaders"""
@@ -421,6 +437,14 @@ class Model3D:
             # Upload bone matrices
             if self.bone_matrices and self.skinning_enabled:
                 self.shader.set_bone_matrices(self.bone_matrices)
+                # Debug: log once
+                if not hasattr(self, '_logged_bone_upload'):
+                    self._logged_bone_upload = True
+                    logger.info(f"GPU: Uploading {len(self.bone_matrices)} bone matrices to shader")
+                    # Check if arm bones have rotation
+                    for i, bone in enumerate(self.bones):
+                        if 'UpperArm' in bone.name:
+                            logger.info(f"  Arm bone {bone.name}: rotation={bone.rotation}, matrix[0,0:3]={self.bone_matrices[i][0,:3]}")
             
             # Render all skinned meshes
             for skinned_mesh in self.skinned_meshes:
@@ -438,8 +462,12 @@ class Model3D:
         """Legacy immediate mode rendering (fallback)"""
         from OpenGL.GL import glColor4f
         
-        # Set a visible color for the test character (light blue)
-        glColor4f(0.3, 0.7, 1.0, 1.0)
+        # Debug: count frames
+        if not hasattr(self, '_frame_count'):
+            self._frame_count = 0
+        self._frame_count += 1
+        if self._frame_count % 300 == 1:  # Log every ~5 seconds at 60fps
+            logger.info(f"_render_legacy: rendering {len(self.meshes)} meshes")
         
         # Render all meshes with legacy path
         bone_matrices = [bone.world_matrix @ bone.inverse_bind_matrix for bone in self.bones] if self.bones else None
@@ -738,6 +766,10 @@ class ModelLoader:
             # Load skin data (inverse bind matrices)
             if gltf.skins:
                 ModelLoader._load_skins(gltf, model)
+            
+            # NOTE: CPU skinning disabled - causes vertex explosion
+            # The bone index mapping from VRM skins needs investigation
+            # For now, display T-posed model which renders correctly
             
             if mesh_count > 0:
                 logger.info(f"Successfully loaded VRM with {mesh_count} meshes")

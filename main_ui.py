@@ -159,8 +159,8 @@ class EV3UIApplication(QObject):
         """Run the application"""
         logger.info("Starting E.V3 UI...")
         
-        # Start with window hidden - use system tray to show
-        # self.window.show()
+        # Show window at startup for testing
+        self.window.show()
         
         # Run Qt event loop
         sys.exit(self.app.exec())

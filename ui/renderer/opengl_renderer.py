@@ -42,11 +42,10 @@ class OpenGLRenderer(QOpenGLWidget):
         self.animation_time = 0.0
         self.animation_speed = 1.0
         
-        # Setup format - request OpenGL 3.3 Compatibility for GPU skinning with legacy fallback
-        # Compatibility profile allows both shader-based and legacy rendering
+        # Setup format - use OpenGL 2.1 Compatibility for maximum compatibility
         fmt = QSurfaceFormat()
-        fmt.setVersion(3, 3)  # OpenGL 3.3 for shader support
-        fmt.setProfile(QSurfaceFormat.CompatibilityProfile)  # Allows legacy fallback
+        fmt.setVersion(2, 1)  # OpenGL 2.1 for broad compatibility
+        fmt.setProfile(QSurfaceFormat.CompatibilityProfile)
         fmt.setSamples(4)  # Antialiasing
         fmt.setAlphaBufferSize(8)  # Enable alpha channel
         fmt.setDepthBufferSize(24)
@@ -60,8 +59,9 @@ class OpenGLRenderer(QOpenGLWidget):
         self.idle_animation_enabled = True
         self.breathing_phase = 0.0
         
-        # GPU skinning flag
+        # GPU skinning flag - disabled for now, use legacy rendering
         self.gpu_skinning_initialized = False
+        self.supports_modern_gl = False
         
         # Setup timer for animation
         self.timer = QTimer(self)
@@ -70,23 +70,32 @@ class OpenGLRenderer(QOpenGLWidget):
         # Start with idle animation enabled
         self.timer.start(1000 // fps)
         
-        logger.info("OpenGL renderer initialized (GPU skinning enabled)")
+        print(f">>> OpenGLRenderer __init__ complete, format version: {self.format().version()}", flush=True)
+        logger.info("OpenGL renderer initialized")
     
     def initializeGL(self):
-        """Initialize OpenGL and GPU skinning"""
-        # Log OpenGL version info
-        version = glGetString(GL_VERSION)
-        vendor = glGetString(GL_VENDOR)
-        renderer_str = glGetString(GL_RENDERER)
-        if version:
-            logger.info(f"OpenGL Version: {version.decode()}")
-        if vendor:
-            logger.info(f"OpenGL Vendor: {vendor.decode()}")
-        if renderer_str:
-            logger.info(f"OpenGL Renderer: {renderer_str.decode()}")
+        """Initialize OpenGL"""
+        print(">>> initializeGL() called - starting OpenGL setup", flush=True)
+        logger.info("initializeGL() called - starting OpenGL setup")
         
-        # Set clear color (transparent or background color)
-        glClearColor(0.0, 0.0, 0.0, 0.0)  # Transparent
+        # Log OpenGL version info
+        try:
+            version = glGetString(GL_VERSION)
+            vendor = glGetString(GL_VENDOR)
+            renderer_str = glGetString(GL_RENDERER)
+            if version:
+                print(f">>> OpenGL Version: {version.decode()}", flush=True)
+                logger.info(f"OpenGL Version: {version.decode()}")
+            if vendor:
+                logger.info(f"OpenGL Vendor: {vendor.decode()}")
+            if renderer_str:
+                logger.info(f"OpenGL Renderer: {renderer_str.decode()}")
+        except Exception as e:
+            print(f">>> OpenGL error: {e}", flush=True)
+            logger.warning(f"Could not get OpenGL info: {e}")
+        
+        # Set clear color - transparent for desktop overlay
+        glClearColor(0.0, 0.0, 0.0, 0.0)  # Transparent background
         
         # Enable depth testing
         glEnable(GL_DEPTH_TEST)
@@ -95,17 +104,7 @@ class OpenGLRenderer(QOpenGLWidget):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         
-        # Check if we can use modern OpenGL
-        try:
-            gl_major = glGetIntegerv(GL_MAJOR_VERSION)
-            gl_minor = glGetIntegerv(GL_MINOR_VERSION)
-            self.supports_modern_gl = (gl_major > 3) or (gl_major == 3 and gl_minor >= 3)
-            logger.info(f"OpenGL {gl_major}.{gl_minor} detected, modern GL support: {self.supports_modern_gl}")
-        except:
-            self.supports_modern_gl = False
-            logger.warning("Could not detect OpenGL version, assuming legacy")
-        
-        # ALWAYS setup legacy lighting (needed for fallback and compatibility)
+        # Setup legacy lighting
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
         
@@ -120,21 +119,30 @@ class OpenGLRenderer(QOpenGLWidget):
         glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
         
         # Load model
+        logger.info("Loading model...")
         self.load_model()
         
-        # Try GPU skinning if modern GL is available
-        self.gpu_skinning_initialized = False
-        if self.model and self.supports_modern_gl:
+        # Try to initialize GPU skinning for proper bone animation
+        if self.model:
             try:
-                if self.model.initialize_gpu_skinning():
-                    self.gpu_skinning_initialized = True
-                    logger.info("GPU skinning initialized successfully")
-                else:
-                    logger.warning("GPU skinning initialization failed, using legacy rendering")
+                # Check OpenGL version for GPU skinning support
+                gl_version = glGetString(GL_VERSION)
+                if gl_version:
+                    version_str = gl_version.decode()
+                    major = int(version_str.split('.')[0])
+                    if major >= 3:
+                        self.supports_modern_gl = True
+                        logger.info(f"OpenGL {major}.x supports GPU skinning")
+                        
+                        if self.model.initialize_gpu_skinning():
+                            self.gpu_skinning_initialized = True
+                            logger.info("GPU skinning enabled - arm poses will work!")
+                        else:
+                            logger.warning("GPU skinning init failed, bones won't animate")
             except Exception as e:
-                logger.error(f"GPU skinning init error: {e}, using legacy rendering")
+                logger.warning(f"GPU skinning setup error: {e}")
         
-        logger.info("OpenGL initialized")
+        logger.info("OpenGL initialization complete")
     
     def resizeGL(self, w, h):
         """Handle resize"""
@@ -152,7 +160,7 @@ class OpenGLRenderer(QOpenGLWidget):
         """Render scene"""
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        # Use legacy OpenGL rendering (stable and working)
+        # Use legacy OpenGL rendering
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         aspect = self.width() / self.height() if self.height() > 0 else 1.0
@@ -190,8 +198,13 @@ class OpenGLRenderer(QOpenGLWidget):
             else:
                 glScalef(self.model.scale, self.model.scale, self.model.scale)
             
-            # Render the model
-            self.model.render()
+            # Get current matrices for GPU skinning
+            if self.gpu_skinning_initialized:
+                view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX), dtype=np.float32).reshape(4, 4)
+                proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX), dtype=np.float32).reshape(4, 4)
+                self.model.render(view, proj)
+            else:
+                self.model.render()
             
             glPopMatrix()
         

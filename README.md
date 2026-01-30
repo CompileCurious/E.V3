@@ -236,15 +236,20 @@ pip install pygame
 pip install onnxruntime
 ```
 
-### Python 3.13 Portable (Included in Repo)
+### ⚠️ Local-Only Files (NOT in Repository)
 
-The repo includes a Python 3.13 portable setup for consistency:
-```bash
-# Use portable Python (has llama-cpp-python pre-configured)
-start_with_313.bat
-```
+The following are intentionally **NOT tracked** in git and must be set up locally:
 
-This uses `.python313_portable/` which is NOT tracked in git. You'll need to set it up locally if using this method.
+- **`.venv/`** - Python virtual environment (create with `python -m venv .venv`)
+- **`.python313_portable/`** - Portable Python installation (optional)
+- **`*.whl`** - Python wheel files (download as needed)
+- **`*.spec`** - PyInstaller spec files (generated during build)
+- **`build/`** - Build outputs
+- **`dist/`** - Distribution files
+- **`models/llm/*.gguf`** - LLM models (download separately)
+- **`models/character/*.vrm`** - Character models (bring your own)
+
+This keeps the repository clean and respects privacy - your models and environment stay local.
 
 ### Model Setup
 
