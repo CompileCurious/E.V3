@@ -12,7 +12,7 @@ from loguru import logger
 from pathlib import Path
 
 from kernel import Kernel
-from modules import StateModule, EventModule, LLMModule, CalendarModule, IPCModule
+from modules import StateModule, EventModule, LLMModule, CalendarModule, IPCModule, SystemModule
 
 
 def check_single_instance():
@@ -108,6 +108,15 @@ def main():
     ipc_module = IPCModule(kernel_api)
     kernel.register_module(ipc_module)
     
+    try:
+        system_module = SystemModule(kernel_api)
+        kernel.register_module(system_module)
+        logger.info("System module registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register system module: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+    
     # Load modules with their configurations
     logger.info("Loading modules...")
     module_configs = {
@@ -116,6 +125,7 @@ def main():
         "llm": config,
         "calendar": config,
         "ipc": config,
+        "system": config,
     }
     
     if not kernel.load_modules(module_configs):

@@ -13,6 +13,7 @@ virtualenv/
 *.whl
 *.egg
 *.egg-info/
+build/wheels/
 
 # Python Cache and Build
 __pycache__/
@@ -40,7 +41,18 @@ wheels/
 *.exe
 *.dll
 *.pyd
-build/
+build/Kernel/
+build/Shell/
+build/Service/
+build/Daemon/
+build/Companion/
+build/Analysis-*.toc
+build/PKG-*.toc
+build/PYZ-*.pyz
+build/PYZ-*.toc
+build/warn-*.txt
+build/xref-*.html
+build/localpycs/
 dist/
 
 # IDE and Editors
@@ -105,3 +117,7 @@ temp/
 # Private data
 data/
 private/
+
+# Batch and spec files (moved to subdirectories)
+scripts/batch/
+build/*.spec

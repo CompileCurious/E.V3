@@ -11,35 +11,38 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 
 ## ✨ Features
 
+### Core Architecture
 - **Privacy First**: No data scraping, no raw logs sent, all processing local by default
 - **Microkernel Architecture**: Modular design with permission boundaries and event-based communication
 - **Native Windows Kernel**: Runs in background, monitors system events
 - **Interactive Shell**: System tray control with Show/Hide, Stop Kernel, Exit menu
-- **Fully Customizable Character**: Bring your own VRM/GLTF/GLB model - no default character included
+- **Native IPC**: Fast communication between kernel and shell via named pipes
+
+### 3D Character Rendering
+- **GPU-Accelerated Skinning**: 60+ FPS skeletal animation with GLSL shaders
+- **Full Bone Rigging**: Quaternion-based bone transforms with up to 4 influences per vertex
+- **Mouse Cursor Tracking**: Character head follows mouse movements smoothly
+- **VRM/GLTF/GLB Support**: Bring your own character model - no default included
+- **Hot-Swappable Models**: Change characters without restart via UI
+
+### AI & Intelligence
 - **Dual LLM Modes**: 
   - **Fast Mode**: Phi-3-mini (2.3GB) for quick responses
   - **Deep Thinking Mode**: Mistral 7B for complex reasoning
-- **Local Text-to-Speech**: Hot-swappable voicepacks, neural TTS and sample-based audio
+- **Ultra-Optimized Inference**: 128 context, mirostat sampling, ~2-3 second responses
+- **System Status Module**: Real-time CPU, RAM, disk, network monitoring
 - **Optional External LLM**: GPT mini API only when explicitly requested
-- **Event Monitoring**: Windows Defender, Firewall, System notifications
-- **Calendar Integration**: Surface reminders from your calendar
+
+### Interface & Controls
 - **Transparent UI**: Frameless window with proper transparency and click-through support
 - **System Tray Control**: Full control via system tray icon
-- **Native IPC**: Fast communication between kernel and shell via named pipes
-- **Module Configuration UI**: File picker interface for easy model selection
+- **Module Configuration UI**: File picker interface for model selection with iOS-style sliding toggles
+- **Two-Column Layout**: Model controls left, speech/hearing/modules right
 
-## 🚧 Roadmap (Coming Soon)
-
-- **Voice Commands**: Wake word detection and natural voice interaction
-- **Advanced Animations**: Full bone rigging, lip sync, and emotional expressions
-- **Plugin System**: Third-party module support with sandboxing
-- **Multi-Monitor**: Character can move between screens
-- **Smart Context**: Learn from your usage patterns (all local)
-- **Enhanced TTS**: Real-time voice cloning and emotion modulation
-- **Mobile Companion**: Sync with phone for notifications
-- **Custom Gestures**: Teach your character custom animations
-- **Screen Awareness**: Character reacts to what's on screen
-- **And much more...**
+### Additional Features
+- **Local Text-to-Speech**: Hot-swappable voicepacks, neural TTS and sample-based audio
+- **Event Monitoring**: Windows Defender, Firewall, System notifications
+- **Calendar Integration**: Surface reminders from your calendar
 
 ## Architecture
 
@@ -65,16 +68,16 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
 │  │   State     │  │   Events    │  │    LLM      │        │
 │  │   Module    │  │   Module    │  │   Module    │        │
-│  │ (idle/      │  │ (Defender/  │  │ (Mistral/   │        │
-│  │  alert/     │  │  Firewall)  │  │  GPT mini)  │        │
+│  │ (idle/      │  │ (Defender/  │  │ (Phi-3/     │        │
+│  │  alert/     │  │  Firewall)  │  │  Mistral)   │        │
 │  │  reminder)  │  │             │  │             │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 │                                                             │
-│  ┌─────────────┐  ┌─────────────┐                          │
-│  │  Calendar   │  │    IPC      │                          │
-│  │   Module    │  │   Module    │                          │
-│  │ (Reminders) │  │ (Named Pipe)│                          │
-│  └─────────────┘  └─────────────┘                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  Calendar   │  │    IPC      │  │   System    │        │
+│  │   Module    │  │   Module    │  │   Status    │        │
+│  │ (Reminders) │  │ (Named Pipe)│  │  (CPU/RAM)  │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
 │                                                             │
 │  All modules: Explicit permissions, lifecycle, events      │
 └─────────────────────────────────────────────────────────────┘
@@ -104,6 +107,7 @@ E.V3/
 │   ├── event_module.py    # System event monitoring
 │   ├── llm_module.py      # LLM processing
 │   ├── calendar_module.py # Calendar integration
+│   ├── system_module.py   # System status (CPU/RAM/disk/network)
 │   └── ipc_module.py      # Inter-process communication
 │
 ├── service/             # Legacy implementations (used by modules)
@@ -113,9 +117,10 @@ E.V3/
 │   └── calendar/       # Calendar providers
 │
 ├── ui/                  # 3D UI shell (separate process)
-│   ├── renderer/       # OpenGL 3D renderer
-│   ├── window/         # Transparent window
-│   └── animations/     # Animation system
+│   ├── renderer/       # OpenGL 3D renderer with GPU skinning
+│   ├── window/         # Transparent window with cursor tracking
+│   ├── animations/     # Animation system
+│   └── speech/         # TTS integration
 │
 ├── ipc/                 # IPC implementation (named pipes)
 ├── models/              # LLM and 3D character models
@@ -131,6 +136,7 @@ E.V3/
 - **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - Detailed LLM and character model setup
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture and design
 - **[docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md)** - TTS and voice system setup
+- **[docs/GPU_SKINNING.md](docs/GPU_SKINNING.md)** - GPU skeletal animation system
 - **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building standalone executables
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributing and development workflow
 
@@ -204,7 +210,7 @@ git clone https://github.com/yourusername/E.V3.git
 cd E.V3
 
 # Run setup script (creates venv, installs dependencies)
-setup.bat
+scripts\batch\setup.bat
 ```
 
 The setup script will:
@@ -321,7 +327,7 @@ ui:
 ### Quick Start (Recommended)
 ```batch
 # Start both kernel and shell together
-start_ev3.bat
+scripts\batch\start_ev3.bat
 ```
 
 The shell will appear in your system tray. Right-click the tray icon for options.
@@ -329,10 +335,10 @@ The shell will appear in your system tray. Right-click the tray icon for options
 ### Separate Launch
 ```batch
 # Start kernel (background service)
-start_kernel.bat
+scripts\batch\start_kernel.bat
 
 # Start shell (UI with system tray) - in separate terminal
-start_shell.bat
+scripts\batch\start_shell.bat
 ```
 
 ### Python Direct
@@ -476,7 +482,7 @@ To create standalone .exe files:
 
 ```bash
 # Quick build
-build.bat
+scripts\batch\build.bat
 
 # Or manually
 pip install pyinstaller

@@ -63,7 +63,7 @@ class CompanionWindow(QMainWindow):
     
     def _setup_window(self):
         """Setup window flags and properties"""
-        # Frameless window with click-through
+        # Frameless window with click-through for transparent areas
         self.setWindowFlags(
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint |

@@ -68,8 +68,13 @@ class LocalLLM(LLMBase):
             logger.info(f"Loading {mode} mode LLM: {model_file} (GPU layers: {n_gpu_layers})")
             self.model = Llama(
                 model_path=full_path,
-                n_ctx=self.config.get("context_length", 4096),
+                n_ctx=self.config.get("context_length", 512),
+                n_batch=self.config.get("n_batch", 512),
+                n_threads=self.config.get("n_threads", 4),
                 n_gpu_layers=n_gpu_layers,
+                use_mlock=True,  # Lock model in RAM for faster access
+                f16_kv=True,     # Use fp16 for key/value cache (faster)
+                low_vram=False,  # Don't reduce VRAM usage, we want speed
                 verbose=False
             )
             
@@ -85,7 +90,7 @@ class LocalLLM(LLMBase):
             logger.error(traceback.format_exc())
             self.model = None
     
-    def generate(self, prompt: str, max_tokens: int = None) -> str:
+    def generate(self, prompt: str, max_tokens: int = None, temperature: float = None, top_k: int = None, top_p: float = None, repeat_penalty: float = None, mirostat_mode: int = None) -> str:
         """
         Generate response from prompt
         Privacy: No data leaves the machine
@@ -102,17 +107,28 @@ class LocalLLM(LLMBase):
                 else:
                     max_tokens = self.config.get("deep_max_tokens", 512)
             
-            # Use mode-specific temperature
-            mode = self.config.get("mode", "fast")
-            temperature = self.config.get("fast_temperature" if mode == "fast" else "deep_temperature", 0.7)
+            # Use mode-specific temperature if not specified
+            if temperature is None:
+                mode = self.config.get("mode", "fast")
+                temperature = self.config.get("fast_temperature" if mode == "fast" else "deep_temperature", 0.7)
             
-            response = self.model(
-                prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stop=["</s>", "[/INST]", "<|end|>", "<|endoftext|>"],
-                echo=False
-            )
+            # Build generation params
+            gen_params = {
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stop": ["</s>", "[/INST]", "<|end|>", "<|endoftext|>"],
+                "echo": False
+            }
+            if top_k is not None:
+                gen_params["top_k"] = top_k
+            if top_p is not None:
+                gen_params["top_p"] = top_p
+            if repeat_penalty is not None:
+                gen_params["repeat_penalty"] = repeat_penalty
+            if mirostat_mode is not None:
+                gen_params["mirostat_mode"] = mirostat_mode
+            
+            response = self.model(prompt, **gen_params)
             
             return response["choices"][0]["text"].strip()
             

@@ -7,6 +7,7 @@ from modules.event_module import EventModule
 from modules.llm_module import LLMModule
 from modules.calendar_module import CalendarModule
 from modules.ipc_module import IPCModule
+from modules.system_module import SystemModule
 
 __all__ = [
     'StateModule',
@@ -14,4 +15,5 @@ __all__ = [
     'LLMModule',
     'CalendarModule',
     'IPCModule',
+    'SystemModule',
 ]

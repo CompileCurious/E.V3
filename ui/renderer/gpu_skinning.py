@@ -281,7 +281,7 @@ class SkinningShader:
         for i in range(num_bones):
             matrices_flat[i] = bone_matrices[i]
         
-        # Upload to GPU
+        # Upload to GPU - matrices are already in column-major format
         glUniformMatrix4fv(self.u_bone_matrices, MAX_BONES, GL_FALSE, matrices_flat.flatten())
     
     def set_skinning_enabled(self, enabled: bool):

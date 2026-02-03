@@ -5,12 +5,80 @@ Interactive robot frame for selecting models and components
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                 QFileDialog, QMessageBox, QGraphicsView, 
-                                QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, QLineEdit)
-from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer
+                                QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, QLineEdit,
+                                QGroupBox, QCheckBox, QPushButton, QComboBox)
+from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPixmap, QFont, QPainterPath
 from PySide6.QtSvg import QSvgRenderer
 from loguru import logger
 import os
+
+
+class SlidingToggle(QWidget):
+    """iOS-style sliding toggle switch"""
+    toggled = Signal(bool)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(50, 24)
+        self._checked = False
+        self._circle_position = 2
+        
+        # Animation for smooth sliding
+        self.animation = QPropertyAnimation(self, b"circle_position", self)
+        self.animation.setEasingCurve(QEasingCurve.InOutCubic)
+        self.animation.setDuration(200)
+        
+        self.setCursor(Qt.PointingHandCursor)
+    
+    @Property(int)
+    def circle_position(self):
+        return self._circle_position
+    
+    @circle_position.setter
+    def circle_position(self, pos):
+        self._circle_position = pos
+        self.update()
+    
+    def setChecked(self, checked):
+        if self._checked != checked:
+            self._checked = checked
+            self._animate_toggle()
+    
+    def isChecked(self):
+        return self._checked
+    
+    def _animate_toggle(self):
+        start_pos = 2 if not self._checked else 28
+        end_pos = 28 if self._checked else 2
+        
+        self.animation.setStartValue(start_pos)
+        self.animation.setEndValue(end_pos)
+        self.animation.start()
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._checked = not self._checked
+            self._animate_toggle()
+            self.toggled.emit(self._checked)
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Draw background track
+        if self._checked:
+            track_color = QColor(100, 181, 246)  # Blue when on
+        else:
+            track_color = QColor(60, 60, 60)  # Dark gray when off
+        
+        painter.setBrush(QBrush(track_color))
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(0, 0, 50, 24, 12, 12)
+        
+        # Draw sliding circle
+        painter.setBrush(QBrush(QColor(255, 255, 255)))
+        painter.drawEllipse(self._circle_position, 2, 20, 20)
 
 
 class ClickableRegion(QGraphicsEllipseItem):
@@ -112,7 +180,7 @@ class ModulesWindow(QMainWindow):
         super().__init__(parent)
         
         self.setWindowTitle("E.V3 Modules Configuration")
-        self.setFixedSize(500, 650)
+        self.setFixedSize(620, 700)
         
         # Setup UI
         self._setup_ui()
@@ -143,35 +211,29 @@ class ModulesWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
         
-        # Description
-        desc = QLabel("Configure AI models using the buttons below\n(Clickable body parts coming soon)")
-        desc.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #888;
-                padding: 5px;
-            }
-        """)
-        desc.setAlignment(Qt.AlignCenter)
-        layout.addWidget(desc)
-        
         # File picker buttons section
         self._add_file_pickers(layout)
         
-        # Graphics view for robot frame
+        # Bottom section: robot image on left, extended toggles on right
+        bottom_layout = QHBoxLayout()
+        
+        # Graphics view for robot frame (left side, smaller)
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setStyleSheet("background: #2b2b2b; border: 2px solid #444;")
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        layout.addWidget(self.view)
+        self.view.setFixedSize(280, 350)  # Narrower to avoid overlapping toggles
+        bottom_layout.addWidget(self.view)
         
         # Draw robot frame
         self._draw_robot_frame()
         
-        # Add clickable regions (not working yet)
-        # self._add_clickable_regions()
+        # Right side spacer for future toggles extension
+        bottom_layout.addStretch()
+        
+        layout.addLayout(bottom_layout)
         
         # Terminal-style commit widget
         terminal_widget = QWidget()
@@ -222,8 +284,13 @@ class ModulesWindow(QMainWindow):
         self.pending_changes = {}
     
     def _add_file_pickers(self, layout):
-        """Add file picker buttons for module configuration"""
-        from PySide6.QtWidgets import QPushButton, QGroupBox, QComboBox
+        """Add file picker buttons and module toggles in two-column layout"""
+        
+        # Create horizontal layout for two columns
+        columns_layout = QHBoxLayout()
+        
+        # Left column - Model selection
+        left_column = QVBoxLayout()
         
         # LLM Configuration Group
         llm_group = QGroupBox("🧠 AI Brain (LLM)")
@@ -278,7 +345,7 @@ class ModulesWindow(QMainWindow):
         deep_btn.clicked.connect(lambda: self._select_model("deep"))
         llm_layout.addWidget(deep_btn)
         
-        layout.addWidget(llm_group)
+        left_column.addWidget(llm_group)
         
         # Character Model Group
         char_group = QGroupBox("💫 3D Character Model")
@@ -290,7 +357,96 @@ class ModulesWindow(QMainWindow):
         char_btn.clicked.connect(lambda: self._select_model("character"))
         char_layout.addWidget(char_btn)
         
-        layout.addWidget(char_group)
+        left_column.addWidget(char_group)
+        left_column.addStretch()
+        
+        # Right column - Speech, Hearing, and Module toggles
+        right_column = QVBoxLayout()
+        
+        # Speech Group
+        speech_group = QGroupBox("🗣️ Speech (TTS)")
+        speech_group.setStyleSheet(llm_group.styleSheet())
+        speech_layout = QVBoxLayout(speech_group)
+        
+        speech_btn = QPushButton("📁 Select Voice Model")
+        speech_btn.setStyleSheet(self._button_style())
+        speech_btn.clicked.connect(lambda: self._select_model("speech"))
+        speech_layout.addWidget(speech_btn)
+        
+        right_column.addWidget(speech_group)
+        
+        # Hearing Group
+        hearing_group = QGroupBox("👂 Hearing (STT)")
+        hearing_group.setStyleSheet(llm_group.styleSheet())
+        hearing_layout = QVBoxLayout(hearing_group)
+        
+        hearing_btn = QPushButton("📁 Select Listening Model")
+        hearing_btn.setStyleSheet(self._button_style())
+        hearing_btn.clicked.connect(lambda: self._select_model("hearing"))
+        hearing_layout.addWidget(hearing_btn)
+        
+        right_column.addWidget(hearing_group)
+        
+        # Module Toggles below
+        self._add_module_toggles(right_column)
+        right_column.addStretch()
+        
+        # Add columns to horizontal layout
+        columns_layout.addLayout(left_column, 60)  # 60% width for left
+        columns_layout.addLayout(right_column, 40)  # 40% width for right
+        
+        layout.addLayout(columns_layout)
+    
+    def _add_module_toggles(self, layout):
+        """Add module enable/disable toggles"""
+        
+        modules_group = QGroupBox("⚙️ Module Toggles")
+        modules_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 13px;
+                font-weight: bold;
+                color: #64B5F6;
+                border: 2px solid #444;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        modules_layout = QVBoxLayout(modules_group)
+        
+        # System Status Toggle with sliding switch
+        toggle_row = QHBoxLayout()
+        
+        system_label = QLabel("📊 System Status (Time, CPU, RAM, Network)")
+        system_label.setStyleSheet("""
+            QLabel {
+                color: #aaa;
+                font-weight: normal;
+            }
+        """)
+        
+        self.system_status_toggle = SlidingToggle()
+        self.system_status_toggle.setChecked(False)
+        self.system_status_toggle.toggled.connect(self._on_system_status_changed)
+        
+        toggle_row.addWidget(system_label)
+        toggle_row.addStretch()
+        toggle_row.addWidget(self.system_status_toggle)
+        
+        modules_layout.addLayout(toggle_row)
+        
+        layout.addWidget(modules_group)
+    
+    def _on_system_status_changed(self, enabled):
+        """Handle system status toggle"""
+        self.pending_changes["system_module_enabled"] = enabled
+        self.pending_changes["system_module_enabled"] = enabled
+        logger.info(f"System module {'enabled' if enabled else 'disabled'}")
     
     def _button_style(self):
         """Return consistent button styling"""
@@ -335,6 +491,16 @@ class ModulesWindow(QMainWindow):
             folder = "models/character"
             filter_str = "3D Models (*.vrm *.glb *.gltf);;All Files (*.*)"
             config_key = "character_model"
+        elif model_type == "speech":
+            title = "Select Speech Voice Model (TTS)"
+            folder = "models/speech"
+            filter_str = "Voice Models (*.onnx *.pth *.bin);;All Files (*.*)"
+            config_key = "speech_model"
+        elif model_type == "hearing":
+            title = "Select Listening Model (STT)"
+            folder = "models/speech"
+            filter_str = "Speech Models (*.onnx *.pth *.bin);;All Files (*.*)"
+            config_key = "hearing_model"
         else:
             return
         
@@ -439,11 +605,14 @@ class ModulesWindow(QMainWindow):
             # Add pixmap and center it in the scene
             pixmap_item = self.scene.addPixmap(pixmap)
             
-            # Move the image down so the face is visible (shift by 60 pixels down)
-            pixmap_item.setPos(0, -60)
+            # Scale down to 75% and shift up to show head
+            pixmap_item.setScale(0.75)
+            pixmap_item.setPos(-30, -120)
             
-            # Set scene rect to accommodate the shifted image
-            self.scene.setSceneRect(0, -60, pixmap.width(), pixmap.height())
+            # Set scene rect to accommodate the scaled and shifted image
+            scaled_width = pixmap.width() * 0.75
+            scaled_height = pixmap.height() * 0.75
+            self.scene.setSceneRect(-30, -120, scaled_width, scaled_height)
             
             # Fit the view to show the entire scene
             self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
@@ -534,6 +703,12 @@ class ModulesWindow(QMainWindow):
                     
                     if "character_model" in self.pending_changes:
                         config["ui"]["model"]["model_path"] = f"models/character/{self.pending_changes['character_model']}"
+                    
+                    # Update module settings
+                    if "system_module_enabled" in self.pending_changes:
+                        if "modules" not in config:
+                            config["modules"] = {}
+                        config["modules"]["system_enabled"] = self.pending_changes["system_module_enabled"]
                     
                     # Save updated config
                     with open(config_file, 'w') as f:

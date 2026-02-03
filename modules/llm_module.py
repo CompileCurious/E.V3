@@ -144,7 +144,7 @@ class LLMModule(Module):
         })
     
     def _process_user_query(self, event_data: Dict[str, Any]):
-        """Process user message via LLM"""
+        """Process user message via LLM with intelligent model selection"""
         message = event_data.get("message", "")
         use_external = event_data.get("use_external", False)
         
@@ -153,27 +153,65 @@ class LLMModule(Module):
         
         logger.info(f"Processing user query: {message[:50]}...")
         
-        # Choose LLM provider
-        llm = self.external_llm if (use_external and self.external_llm) else self.local_llm
+        # Try to inject system context if needed (for time, system info queries)
+        try:
+            # Access kernel's module registry through the parent kernel
+            # This is a bit hacky but necessary since KernelAPI doesn't expose modules
+            from kernel.kernel import Kernel
+            for obj in self.kernel.__dict__.values():
+                if isinstance(obj, Kernel):
+                    if "system" in obj._modules:
+                        system_module = obj._modules["system"]
+                        if hasattr(system_module, 'inject_context_if_needed'):
+                            message = system_module.inject_context_if_needed(message)
+                    break
+        except Exception as e:
+            logger.debug(f"Could not inject system context: {e}")
         
-        if not llm:
-            response = (
-                "⚠️ LLM not configured.\n\n"
-                "To use the AI assistant, you need to:\n"
-                "1. Install llama-cpp-python: pip install llama-cpp-python\n"
-                "2. Download Mistral 7B model from HuggingFace\n"
-                "3. Place it in models/llm/ folder\n\n"
-                "See models/MODEL_SETUP.md for detailed instructions."
-            )
-            logger.warning("LLM not available - no model configured")
+        # Detect simple greetings and return instant canned responses
+        message_lower = message.lower().strip()
+        simple_greetings = {
+            'hi': 'Hello!',
+            'hello': 'Hello!',
+            'hey': 'Hello!',
+            'sup': 'Hello!',
+            'yo': 'Hello!',
+            'greetings': 'Hello!',
+            'howdy': 'Hello!',
+            'good morning': 'Hello!',
+            'good afternoon': 'Hello!',
+            'good evening': 'Hello!'
+        }
+        
+        if message_lower in simple_greetings:
+            # Instant response without LLM call
+            response = simple_greetings[message_lower]
+            logger.info(f"Instant greeting response: {response}")
         else:
-            try:
-                prompt = f"[INST] {message} [/INST]"
-                response = llm.generate(prompt, max_tokens=256)
-                logger.info(f"Generated response: {response[:50]}...")
-            except Exception as e:
-                response = f"Error generating response: {str(e)}"
-                logger.error(f"LLM generation error: {e}")
+            # Choose LLM provider
+            llm = self.external_llm if (use_external and self.external_llm) else self.local_llm
+            
+            if not llm:
+                response = "Local LLM not available."
+                logger.warning("LLM not available - no model configured")
+            else:
+                try:
+                    # Use LLM for everything else with aggressive speed settings
+                    # Add instruction to ignore typos and be direct
+                    prompt = f"[INST] Answer directly and concisely. Ignore any typos. {message} [/INST]"
+                    response = llm.generate(
+                        prompt, 
+                        max_tokens=60,
+                        temperature=0.3,
+                        top_k=10,
+                        top_p=0.5,
+                        repeat_penalty=1.1,
+                        mirostat_mode=2
+                    )
+                    logger.info(f"Generated response: {response[:50]}...")
+                except Exception as e:
+                    response = f"Error generating response: {str(e)}"
+                    logger.error(f"LLM generation error: {e}")
         
         # Send response via IPC
         logger.info("Sending LLM response via IPC")

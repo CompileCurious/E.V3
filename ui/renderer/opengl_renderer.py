@@ -5,7 +5,7 @@ Renders 3D character model with skeletal animations using GLSL shaders
 
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import QTimer, Qt, QPoint
-from PySide6.QtGui import QSurfaceFormat
+from PySide6.QtGui import QSurfaceFormat, QCursor
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
@@ -41,6 +41,10 @@ class OpenGLRenderer(QOpenGLWidget):
         # Animation
         self.animation_time = 0.0
         self.animation_speed = 1.0
+        self.last_anim_update = 0.0  # Track last animation update time
+        self.anim_update_interval = 1.0 / 30.0  # Update animation at 30fps
+        self.last_mouse_x = 0.5
+        self.last_mouse_y = 0.5
         
         # Setup format - use OpenGL 2.1 Compatibility for maximum compatibility
         fmt = QSurfaceFormat()
@@ -51,13 +55,20 @@ class OpenGLRenderer(QOpenGLWidget):
         fmt.setDepthBufferSize(24)
         self.setFormat(fmt)
         
-        # Make widget transparent
+        # Make widget transparent but accept mouse input
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("background: transparent;")
         
         # Idle animation state
         self.idle_animation_enabled = True
         self.breathing_phase = 0.0
+        
+        # Ensure we capture all mouse events - don't make transparent for input
+        self.setMouseTracking(True)  # Track mouse even without button pressed
+        
+        # Mouse tracking for head
+        self.mouse_x = 0.5  # Normalized 0-1
+        self.mouse_y = 0.5  # Normalized 0-1
         
         # GPU skinning flag - disabled for now, use legacy rendering
         self.gpu_skinning_initialized = False
@@ -253,14 +264,34 @@ class OpenGLRenderer(QOpenGLWidget):
         dt = 1.0 / self.config.get("rendering", {}).get("fps", 60)
         self.animation_time += dt * self.animation_speed
         
-        # Update idle breathing animation (slow, gentle)
-        if self.idle_animation_enabled:
-            self.breathing_phase += dt * 2.0  # 2 radians per second = ~0.3 breaths/sec
-            # Log occasionally to verify animation is running
-            if int(self.breathing_phase) % 5 == 0 and int(self.breathing_phase * 10) % 10 == 0:
-                logger.debug(f"Idle animation: phase={self.breathing_phase:.2f}")
+        # Get global mouse cursor position and convert to widget coordinates
+        global_pos = QCursor.pos()
+        widget_pos = self.mapFromGlobal(global_pos)
         
-        # Update model animations
+        # Update mouse position for head tracking
+        if 0 <= widget_pos.x() <= self.width() and 0 <= widget_pos.y() <= self.height():
+            self.mouse_x = widget_pos.x() / self.width() if self.width() > 0 else 0.5
+            self.mouse_y = widget_pos.y() / self.height() if self.height() > 0 else 0.5
+        
+        # Only update animation (which triggers expensive CPU skinning) at 30fps
+        mouse_moved = abs(self.mouse_x - self.last_mouse_x) > 0.01 or abs(self.mouse_y - self.last_mouse_y) > 0.01
+        time_for_update = self.animation_time - self.last_anim_update >= self.anim_update_interval
+        
+        if time_for_update:
+            # Update idle animation on model with mouse position
+            if self.model and self.idle_animation_enabled:
+                import time
+                start = time.perf_counter()
+                self.model.update_idle_animation(dt * self.animation_speed, self.mouse_x, self.mouse_y)
+                elapsed = time.perf_counter() - start
+                if elapsed > 0.05:  # Log if update takes more than 50ms
+                    print(f"[PERF] Animation update took {elapsed*1000:.1f}ms", flush=True)
+            
+            self.last_anim_update = self.animation_time
+            self.last_mouse_x = self.mouse_x
+            self.last_mouse_y = self.mouse_y
+        
+        # Update model skeleton
         if self.model:
             self.model.update_skeleton()
         
@@ -308,26 +339,30 @@ class OpenGLRenderer(QOpenGLWidget):
         event.accept()
     
     def mouseMoveEvent(self, event):
-        """Handle mouse move for camera control"""
-        if self.last_mouse_pos is None:
-            return
-        
+        """Handle mouse move for camera control and head tracking"""
+        # Update normalized mouse position for head tracking (always)
         current_pos = event.position().toPoint()
-        delta = current_pos - self.last_mouse_pos
+        self.mouse_x = current_pos.x() / self.width() if self.width() > 0 else 0.5
+        self.mouse_y = current_pos.y() / self.height() if self.height() > 0 else 0.5
         
-        if self.mouse_button == Qt.LeftButton:
-            # Rotate camera (Blender style)
-            self.camera_angle_y += delta.x() * 0.5
-            self.camera_angle_x += delta.y() * 0.5
-            self.camera_angle_x = max(-89, min(89, self.camera_angle_x))
+        # Camera control (only when button is pressed)
+        if self.last_mouse_pos is not None:
+            delta = current_pos - self.last_mouse_pos
             
-        elif self.mouse_button == Qt.MiddleButton:
-            # Pan camera (Blender style)
-            sensitivity = 0.01
-            self.camera_pan_x += delta.x() * sensitivity
-            self.camera_pan_y -= delta.y() * sensitivity
+            if self.mouse_button == Qt.LeftButton:
+                # Rotate camera (Blender style)
+                self.camera_angle_y += delta.x() * 0.5
+                self.camera_angle_x += delta.y() * 0.5
+                self.camera_angle_x = max(-89, min(89, self.camera_angle_x))
+                
+            elif self.mouse_button == Qt.MiddleButton:
+                # Pan camera (Blender style)
+                sensitivity = 0.01
+                self.camera_pan_x += delta.x() * sensitivity
+                self.camera_pan_y -= delta.y() * sensitivity
+            
+            self.last_mouse_pos = current_pos
         
-        self.last_mouse_pos = current_pos
         self.update()
         event.accept()
     
