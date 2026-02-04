@@ -18,7 +18,7 @@ from ui.animations import AnimationController
 from ui.window.core_window import ModulesWindow
 
 
-class CompanionWindow(QMainWindow):
+class ShellWindow(QMainWindow):
     """
     Main shell window
     - Transparent background

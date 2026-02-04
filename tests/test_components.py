@@ -34,7 +34,7 @@ def test_imports():
         from ui.animations import AnimationController
         print("✓ Animation controller")
         
-        from ui.window import CompanionWindow
+        from ui.window import ShellWindow
         print("✓ Companion window")
         
         print("\n✓ All imports successful!")

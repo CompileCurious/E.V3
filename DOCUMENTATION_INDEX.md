@@ -176,7 +176,7 @@ python install_service.py start
 - `start.py` - Quick start script
 - `install_service.py` - Service installer
 - `service/Modules/service.py` - Main service class
-- `ui/window/companion_window.py` - Main window
+- `ui/window/shell_window.py` - Main window
 - `ui/renderer/opengl_renderer.py` - 3D renderer
 - `ui/animations/animation_controller.py` - Animations
 - `ipc/native_pipe.py` - IPC implementation

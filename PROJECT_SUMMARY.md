@@ -102,7 +102,7 @@ E.V3/
 │       └── calendar_manager.py
 ├── ui/                  # UI layer
 │   ├── window/          # Main window
-│   │   └── companion_window.py
+│   │   └── shell_window.py
 │   ├── renderer/        # 3D rendering
 │   │   ├── opengl_renderer.py
 │   │   └── model_loader.py

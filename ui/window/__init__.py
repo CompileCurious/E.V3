@@ -1,5 +1,5 @@
 """Window package"""
-from .companion_window import CompanionWindow
+from .shell_window import ShellWindow
 from .core_window import ModulesWindow
 
-__all__ = ['CompanionWindow', 'ModulesWindow']
+__all__ = ['ShellWindow', 'ModulesWindow']

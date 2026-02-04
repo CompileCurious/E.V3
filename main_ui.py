@@ -14,7 +14,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtCore import QTimer, Signal, QObject
 from loguru import logger
 
-from ui.window import CompanionWindow
+from ui.window import ShellWindow
 from ui.speech import SpeechManager
 from ipc import IPCClient
 
@@ -61,7 +61,7 @@ class EV3UIApplication(QObject):
         self.app.setQuitOnLastWindowClosed(False)  # Don't quit when hiding to tray
         
         # Main window
-        self.window: CompanionWindow = None
+        self.window: ShellWindow = None
         
         # IPC client
         self.ipc_client: IPCClient = None
@@ -109,7 +109,7 @@ class EV3UIApplication(QObject):
         self.speech_manager = SpeechManager(self.config)
         
         # Create main window
-        self.window = CompanionWindow(self.config)
+        self.window = ShellWindow(self.config)
         
         # Connect the signal to deliver LLM responses
         self.llm_response_signal.connect(self._deliver_llm_response)

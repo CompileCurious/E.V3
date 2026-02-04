@@ -103,7 +103,7 @@ python -m pdb main_service.py
 3. Test with different states
 
 ### Modify UI Layout
-1. Edit `CompanionWindow`
+1. Edit `ShellWindow`
 2. Update stylesheets
 3. Test window positioning
 
