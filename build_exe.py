@@ -46,12 +46,20 @@ print()
 
 # Build service executable
 print("[2/5] Building kernel executable...")
+# Prefer project ICO name 'E.V3.ico' then 'icon.ico'
+def _choose_icon():
+    for name in ("E.V3.ico", "icon.ico"):
+        path = os.path.join("assets", name)
+        if os.path.exists(path):
+            return f"--icon={path}"
+    return ""
+
 service_cmd = [
     sys.executable, "-m", "PyInstaller",
     "--name=Kernel",
     "--onefile",
     "--noconsole",
-    "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
+    _choose_icon(),
     "--add-data=config;config",
     "--hidden-import=win32timezone",
     "--hidden-import=pywintypes",
@@ -78,7 +86,7 @@ ui_cmd = [
     "--name=Shell",
     "--onefile",
     "--windowed",
-    "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
+    _choose_icon(),
     "--add-data=config;config",
     "--hidden-import=PySide6.QtCore",
     "--hidden-import=PySide6.QtGui",
