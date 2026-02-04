@@ -258,9 +258,9 @@ load_dotenv()
 ## Getting Help
 
 - Check [FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md) for complete setup guide
-- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues
+- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues (if exists)
 - Review logs in `logs/ev3.log` for errors
-- Check [GitHub Issues](https://github.com/yourusername/E.V3/issues) for known problems
+- Check GitHub Issues for known problems
 
 ---
 

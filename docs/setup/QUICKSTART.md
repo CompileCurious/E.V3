@@ -124,9 +124,9 @@ python main_service.py
 
 ## 📚 Documentation
 
-- **Full Guide**: See `USAGE_GUIDE.md`
-- **Model Setup**: See `models/MODEL_SETUP.md`
-- **Architecture**: See `README.md`
+- **Full Guide**: See `../USAGE_GUIDE.md`
+- **Model Setup**: See `../../models/MODEL_SETUP.md`
+- **Architecture**: See `../../README.md`
 
 ## 🛡️ Privacy Commitment
 

@@ -4,7 +4,7 @@
 
 ## ⚠️ Alpha Status
 
-E.V3 is in active development. Core features work, but many exciting features are still coming. See the Roadmap in [README.md](README.md) for what's next!
+E.V3 is in active development. Core features work, but many exciting features are still coming. See the Roadmap in [../../README.md](../../README.md) for what's next!
 
 ## 📋 Prerequisites
 
@@ -121,9 +121,9 @@ Switch via system tray → Modules → LLM Mode dropdown
 
 ## 📚 Next Steps
 
-- Read [USAGE_GUIDE.md](USAGE_GUIDE.md) for detailed usage
-- See [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
-- Check [docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md) for TTS setup
+- Read [../USAGE_GUIDE.md](../USAGE_GUIDE.md) for detailed usage
+- See [../ARCHITECTURE.md](../ARCHITECTURE.md) for technical details
+- Check [../SPEECH_SYSTEM.md](../SPEECH_SYSTEM.md) for TTS setup
 - Join community discussions (coming soon!)
 
 ## 🎉 You're Ready!

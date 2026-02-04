@@ -92,7 +92,7 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 └─────────────────────────────────────────────────────────────┘
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed module documentation.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed module documentation.
 
 ## Project Structure
 
@@ -131,14 +131,14 @@ E.V3/
 
 ## 📚 Quick Links
 
-- **[FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md)** - 🚀 **START HERE!** Complete first-time setup guide
-- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - How to use E.V3 daily
+- **[docs/setup/FIRST_TIME_SETUP.md](docs/setup/FIRST_TIME_SETUP.md)** - 🚀 **START HERE!** Complete first-time setup guide
+- **[docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md)** - How to use E.V3 daily
 - **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - Detailed LLM and character model setup
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture and design
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical architecture and design
 - **[docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md)** - TTS and voice system setup
 - **[docs/GPU_SKINNING.md](docs/GPU_SKINNING.md)** - GPU skeletal animation system
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building standalone executables
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributing and development workflow
+- **[docs/setup/BUILD_GUIDE.md](docs/setup/BUILD_GUIDE.md)** - Building standalone executables
+- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Contributing and development workflow
 
 ## Requirements
 
@@ -486,24 +486,23 @@ scripts\batch\build.bat
 
 # Or manually
 pip install pyinstaller
-python build_exe.py
+python scripts/python/build_exe.py
 ```
 
 Executables will be in `dist/`:
 - `EV3Kernel.exe` - Background kernel
 - `EV3Shell.exe` - UI shell
 
-See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
+See [docs/setup/BUILD_GUIDE.md](docs/setup/BUILD_GUIDE.md) for detailed instructions.
 
 ## Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Microkernel design, modules, event flows
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Microkernel design, modules, event flows
 - **[models/MODEL_SETUP.md](models/MODEL_SETUP.md)** - LLM, 3D models, and speech setup
 - **[docs/SPEECH_SYSTEM.md](docs/SPEECH_SYSTEM.md)** - Complete speech/TTS documentation
-- **[SPEECH_IMPLEMENTATION.md](SPEECH_IMPLEMENTATION.md)** - Speech system implementation summary
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building executables
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development workflow
-- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - User guide
+- **[docs/setup/BUILD_GUIDE.md](docs/setup/BUILD_GUIDE.md)** - Building executables
+- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Development workflow
+- **[docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md)** - User guide
 
 ## Privacy & Security
 
