@@ -136,10 +136,17 @@ class CompanionWindow(QMainWindow):
     def _setup_tray_icon(self):
         """Setup system tray icon with menu"""
         self.tray_icon = QSystemTrayIcon(self)
-        
-        # Create icon (use default for now)
-        from PySide6.QtWidgets import QStyle
-        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+        import os
+        from PySide6.QtGui import QIcon
+
+        # Prefer user-provided ICO in assets/, fall back to standard icon
+        icon_path = os.path.join("assets", "E.V3.ico")
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+        else:
+            from PySide6.QtWidgets import QStyle
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+
         self.tray_icon.setIcon(icon)
         
         # Create main menu (parent it to self)

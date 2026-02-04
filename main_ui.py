@@ -10,6 +10,7 @@ import win32api
 from winerror import ERROR_ALREADY_EXISTS
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtGui import QIcon
 from PySide6.QtCore import QTimer, Signal, QObject
 from loguru import logger
 
@@ -51,6 +52,12 @@ class EV3UIApplication(QObject):
         # Qt application
         self.app = QApplication(sys.argv)
         self.app.setApplicationName("E.V3 Shell")
+        # Use project icon if available
+        try:
+            icon_path = "assets/E.V3.ico"
+            self.app.setWindowIcon(QIcon(icon_path))
+        except Exception:
+            pass
         self.app.setQuitOnLastWindowClosed(False)  # Don't quit when hiding to tray
         
         # Main window
