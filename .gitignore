@@ -43,9 +43,6 @@ wheels/
 *.pyd
 build/Kernel/
 build/Shell/
-build/Service/
-build/Daemon/
-build/Companion/
 build/Analysis-*.toc
 build/PKG-*.toc
 build/PYZ-*.pyz

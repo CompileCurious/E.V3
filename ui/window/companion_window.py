@@ -230,22 +230,22 @@ class CompanionWindow(QMainWindow):
         tray_menu.addMenu(shell_menu)
         
         # === KERNEL SUBMENU ===
-        daemon_menu = QMenu("Kernel", tray_menu)
+        kernel_menu = QMenu("Kernel", tray_menu)
         
         # Stop Kernel action
-        stop_daemon_action = QAction("Stop Kernel", self)
-        stop_daemon_action.triggered.connect(self.stop_kernel)
-        daemon_menu.addAction(stop_daemon_action)
+        stop_kernel_action = QAction("Stop Kernel", self)
+        stop_kernel_action.triggered.connect(self.stop_kernel)
+        kernel_menu.addAction(stop_kernel_action)
         
         # Restart Kernel action
-        restart_daemon_action = QAction("Restart Kernel", self)
-        restart_daemon_action.triggered.connect(self.restart_kernel)
-        daemon_menu.addAction(restart_daemon_action)
+        restart_kernel_action = QAction("Restart Kernel", self)
+        restart_kernel_action.triggered.connect(self.restart_kernel)
+        kernel_menu.addAction(restart_kernel_action)
         
-        daemon_menu.addSeparator()
+        kernel_menu.addSeparator()
         
         # Permissions submenu
-        permissions_menu = QMenu("Permissions", daemon_menu)
+        permissions_menu = QMenu("Permissions", kernel_menu)
         
         # File System Access
         fs_menu = QMenu("File System Access", permissions_menu)
@@ -353,9 +353,9 @@ class CompanionWindow(QMainWindow):
         reset_permissions_action.triggered.connect(self.reset_permissions)
         permissions_menu.addAction(reset_permissions_action)
         
-        daemon_menu.addMenu(permissions_menu)
+        kernel_menu.addMenu(permissions_menu)
         
-        tray_menu.addMenu(daemon_menu)
+        tray_menu.addMenu(kernel_menu)
         
         # === MODULES MENU ===
         core_action = QAction("Modules", self)
