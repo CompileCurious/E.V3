@@ -1,6 +1,16 @@
 """
-LLM Module
-Provides local and external LLM capabilities
+DEPRECATED: LLM Module
+
+⚠️ This module uses the old Python-based LLM system.
+For best performance, integrate with the C++ kernel instead (see kernel_cpp/docs/INTEGRATION.md).
+
+The C++ kernel provides:
+- 2-3x faster inference
+- Direct llama.cpp integration
+- Persistent model loading
+- Native async/streaming
+
+Legacy: Provides local and external LLM capabilities
 """
 
 from typing import Dict, Any, Set, Optional

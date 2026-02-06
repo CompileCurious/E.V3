@@ -144,7 +144,8 @@ python --version
 python -c "import PySide6; print('PySide6: OK')"
 python -c "import OpenGL; print('PyOpenGL: OK')"
 python -c "import pygltflib; print('pygltflib: OK')"
-python -c "import llama_cpp; print('llama-cpp-python: OK')"
+# NOTE: llama-cpp-python is no longer required - use C++ kernel instead
+# python -c "import llama_cpp; print('llama-cpp-python: OK')"
 
 # List installed packages
 pip list
@@ -154,7 +155,17 @@ pip list
 
 ### "No module named 'llama_cpp'"
 
-**Solution**: Install llama-cpp-python separately:
+**Note**: With the C++ kernel rewrite, `llama-cpp-python` is **no longer required**.
+
+The C++ kernel provides:
+- 2-3x faster inference than Python bindings
+- Direct llama.cpp integration
+- Persistent model loading
+- Native async/streaming
+
+See [kernel_cpp/docs/BUILD.md](../../kernel_cpp/docs/BUILD.md) for build instructions.
+
+If you're using the legacy Python kernel:
 ```bash
 pip install llama-cpp-python
 ```
@@ -166,6 +177,7 @@ pip install llama-cpp-python
 **Solution**: 
 - Use Python 3.13 if you have a cp313 wheel
 - Or install from PyPI: `pip install llama-cpp-python`
+- Or switch to the C++ kernel for better performance
 
 ### "CUDA error" or GPU not detected
 

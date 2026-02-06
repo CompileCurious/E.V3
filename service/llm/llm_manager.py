@@ -1,6 +1,16 @@
 """
-LLM Integration for E.V3
-Local Mistral 7B for privacy, optional GPT mini for external queries
+DEPRECATED: LLM Integration for E.V3
+
+⚠️ This module uses the old Python-based LLM system.
+For best performance, use the C++ kernel instead (see kernel_cpp/docs/BUILD.md).
+
+The C++ kernel provides:
+- 2-3x faster inference
+- Direct llama.cpp integration (no Python overhead)
+- Persistent model loading
+- Native async/streaming
+
+Legacy Python kernel: Local Mistral 7B for privacy, optional GPT mini for external queries
 Privacy: Strict controls to prevent data leakage
 """
 
