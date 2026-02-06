@@ -34,14 +34,15 @@ except ImportError:
 
 
 def get_kernel_exe_path() -> Optional[Path]:
-    """Find the C++ kernel executable"""
+    """Find the C++ kernel executable or launcher"""
     base = Path(__file__).parent
     
-    # Check common locations
+    # Check common locations (C++ binary or Python wrapper)
     candidates = [
         base / "build" / "bin" / "EV3Kernel.exe",
         base / "build" / "Release" / "EV3Kernel.exe",
-        base / "bin" / "EV3Kernel.exe",
+        base / "bin" / "EV3Kernel.bat",  # Python wrapper for mock kernel
+        base / "bin" / "EV3Kernel.exe",  # Real C++ executable
         base.parent / "bin" / "EV3Kernel.exe",
     ]
     
