@@ -18,6 +18,28 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+# Use Clang compiler if available
+if(NOT CMAKE_CXX_COMPILER)
+    find_program(CLANG_CXX clang++)
+    if(CLANG_CXX)
+        set(CMAKE_CXX_COMPILER ${CLANG_CXX})
+    endif()
+endif()
+
+if(NOT CMAKE_C_COMPILER)
+    find_program(CLANG_C clang)
+    if(CLANG_C)
+        set(CMAKE_C_COMPILER ${CLANG_C})
+    endif()
+endif()
+
+# Disable manifest requirement which needs RC compiler
+if(MSVC OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(MSVC)
+        add_link_options(/MANIFEST:NO)
+    endif()
+endif()
+
 project(EV3Kernel
     VERSION 2.0.0
     DESCRIPTION "E.V3 High-Performance C++ Kernel"

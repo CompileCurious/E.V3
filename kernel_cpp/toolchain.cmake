@@ -1,0 +1,5 @@
+set(CMAKE_C_COMPILER "C:/LLVM/bin/clang.exe")
+set(CMAKE_CXX_COMPILER "C:/LLVM/bin/clang++.exe")
+set(CMAKE_RC_COMPILER "")
+set(CMAKE_RC_COMPILER_WORKS TRUE)
+set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

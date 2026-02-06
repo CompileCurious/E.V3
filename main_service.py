@@ -1,6 +1,6 @@
 """
 Main entry point for E.V3 Background Service
-Launches the C++ kernel and Python UI shell
+Launches the Python kernel and Python UI shell
 """
 
 import sys
@@ -13,9 +13,6 @@ import time
 from winerror import ERROR_ALREADY_EXISTS
 from loguru import logger
 from pathlib import Path
-
-# Use C++ kernel bridge - it handles the real kernel execution
-from kernel_cpp import CppKernelBridge
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -87,9 +84,9 @@ def setup_logging(config):
 
 
 def main():
-    """Main entry point - launches C++ kernel"""
+    """Main entry point - launches Python kernel"""
     logger.info("Starting E.V3 Privacy-Focused Desktop Companion")
-    logger.info("Using high-performance C++ kernel for LLM inference")
+    logger.info("Using Python kernel for LLM inference")
     
     # Check for single instance and keep mutex handle
     mutex = check_single_instance()
@@ -101,25 +98,28 @@ def main():
     config = load_config()
     setup_logging(config)
     
-    # Create and start C++ kernel bridge
-    logger.info("Initializing C++ kernel...")
-    bridge = CppKernelBridge()
+    # Launch Python kernel as subprocess
+    logger.info("Launching Python kernel...")
+    kernel_script = get_resource_path("kernel_cpp/bin/EV3Kernel.py")
     
     try:
-        if not bridge.start():
-            logger.error("Failed to start C++ kernel")
-            sys.exit(1)
+        kernel_process = subprocess.Popen(
+            [sys.executable, kernel_script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
         
-        logger.info("C++ kernel started successfully")
+        logger.info("Python kernel started successfully")
         logger.info("IPC server running at: \\.\pipe\E.V3.v2")
         logger.info("Waiting for shell connection...")
         
-        # Keep the kernel running
+        # Monitor kernel process
         while True:
-            time.sleep(1)
-            if not bridge.is_running():
-                logger.error("C++ kernel process terminated unexpectedly")
+            if kernel_process.poll() is not None:
+                logger.error("Kernel process terminated unexpectedly")
                 break
+            time.sleep(1)
     
     except KeyboardInterrupt:
         logger.info("Received interrupt signal")
@@ -127,7 +127,12 @@ def main():
         logger.error(f"Kernel error: {e}", exc_info=True)
     finally:
         logger.info("Shutting down E.V3 Service...")
-        bridge.stop()
+        if kernel_process.poll() is None:
+            kernel_process.terminate()
+            try:
+                kernel_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                kernel_process.kill()
         logger.info("E.V3 Service stopped")
 
 
