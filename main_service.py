@@ -1,6 +1,6 @@
 """
 Main entry point for E.V3 Background Service
-Microkernel architecture with modular capabilities
+Launches the C++ kernel and Python UI shell
 """
 
 import sys
@@ -8,12 +8,14 @@ import os
 import yaml
 import win32event
 import win32api
+import subprocess
+import time
 from winerror import ERROR_ALREADY_EXISTS
 from loguru import logger
 from pathlib import Path
 
-from kernel import Kernel
-from modules import StateModule, EventModule, LLMModule, CalendarModule, IPCModule, SystemModule
+# Use C++ kernel bridge - it handles the real kernel execution
+from kernel_cpp import CppKernelBridge
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -85,8 +87,9 @@ def setup_logging(config):
 
 
 def main():
-    """Main entry point - microkernel initialization"""
-    logger.info("Starting E.V3 Privacy-Focused Desktop Companion (Microkernel Architecture)")
+    """Main entry point - launches C++ kernel"""
+    logger.info("Starting E.V3 Privacy-Focused Desktop Companion")
+    logger.info("Using high-performance C++ kernel for LLM inference")
     
     # Check for single instance and keep mutex handle
     mutex = check_single_instance()
@@ -98,61 +101,34 @@ def main():
     config = load_config()
     setup_logging(config)
     
-    # Create kernel
-    kernel = Kernel(config)
-    kernel_api = kernel.get_kernel_api()
-    
-    # Register capability modules
-    logger.info("Registering capability modules...")
-    
-    state_module = StateModule(kernel_api)
-    kernel.register_module(state_module)
-    
-    event_module = EventModule(kernel_api)
-    kernel.register_module(event_module)
-    
-    llm_module = LLMModule(kernel_api)
-    kernel.register_module(llm_module)
-    
-    calendar_module = CalendarModule(kernel_api)
-    kernel.register_module(calendar_module)
-    
-    ipc_module = IPCModule(kernel_api)
-    kernel.register_module(ipc_module)
+    # Create and start C++ kernel bridge
+    logger.info("Initializing C++ kernel...")
+    bridge = CppKernelBridge()
     
     try:
-        system_module = SystemModule(kernel_api)
-        kernel.register_module(system_module)
-        logger.info("System module registered successfully")
+        if not bridge.start():
+            logger.error("Failed to start C++ kernel")
+            sys.exit(1)
+        
+        logger.info("C++ kernel started successfully")
+        logger.info("IPC server running at: \\.\pipe\E.V3.v2")
+        logger.info("Waiting for shell connection...")
+        
+        # Keep the kernel running
+        while True:
+            time.sleep(1)
+            if not bridge.is_running():
+                logger.error("C++ kernel process terminated unexpectedly")
+                break
+    
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal")
     except Exception as e:
-        logger.error(f"Failed to register system module: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-    
-    # Load modules with their configurations
-    logger.info("Loading modules...")
-    module_configs = {
-        "state": config.get("state_machine", {}),
-        "events": config,
-        "llm": config,
-        "calendar": config,
-        "ipc": config,
-        "system": config,
-    }
-    
-    if not kernel.load_modules(module_configs):
-        logger.error("Failed to load all modules")
-        sys.exit(1)
-    
-    # Enable modules
-    logger.info("Enabling modules...")
-    if not kernel.enable_modules():
-        logger.error("Failed to enable all modules")
-        sys.exit(1)
-    
-    # Start kernel event loop
-    logger.info("E.V3 Service started successfully")
-    kernel.start()
+        logger.error(f"Kernel error: {e}", exc_info=True)
+    finally:
+        logger.info("Shutting down E.V3 Service...")
+        bridge.stop()
+        logger.info("E.V3 Service stopped")
 
 
 if __name__ == "__main__":
