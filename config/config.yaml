@@ -59,15 +59,15 @@ llm:
     model_path: "models/llm/"
     # Fast mode: Quick responses for general conversation (like Copilot)
     fast_model: "Phi-3-mini-4k-instruct-q4.gguf"
-    fast_max_tokens: 150
+    fast_max_tokens: 100  # Enough for complete short responses
     fast_temperature: 0.7
     # Deep thinking mode: Detailed reasoning and complex tasks
     deep_model: "mistral-7b-instruct-v0.2.Q4_K_M.gguf"
     deep_max_tokens: 512
     deep_temperature: 0.8
     # Common settings
-    context_length: 128  # Minimal context for instant responses
-    n_batch: 128  # Match context size for optimal speed
+    context_length: 512  # Increased for better context understanding
+    n_batch: 256  # Larger batch for faster processing
     n_threads: 4  # CPU threads for non-GPU layers
     # Use GPU if available
     use_gpu: true

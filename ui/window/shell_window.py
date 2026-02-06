@@ -137,10 +137,19 @@ class ShellWindow(QMainWindow):
         """Setup system tray icon with menu"""
         self.tray_icon = QSystemTrayIcon(self)
         import os
+        import sys
         from PySide6.QtGui import QIcon
 
+        # Helper for PyInstaller compatibility
+        def get_resource_path(relative_path: str) -> str:
+            try:
+                base_path = sys._MEIPASS
+            except AttributeError:
+                base_path = os.path.abspath(".")
+            return os.path.join(base_path, relative_path)
+
         # Prefer user-provided ICO in assets/, fall back to standard icon
-        icon_path = os.path.join("assets", "E.V3.ico")
+        icon_path = get_resource_path(os.path.join("assets", "E.V3.ico"))
         if os.path.exists(icon_path):
             icon = QIcon(icon_path)
         else:
@@ -541,13 +550,16 @@ class ShellWindow(QMainWindow):
         import os
         import yaml
         
-        permissions_file = os.path.join("config", "permissions.yaml")
+        # Use writable config location (AppData on Windows, not bundled _internal)
+        config_dir = os.path.join(os.getenv('APPDATA', '.'), 'E.V3', 'config')
+        permissions_file = os.path.join(config_dir, "permissions.yaml")
+        
         if os.path.exists(permissions_file):
             try:
                 with open(permissions_file, 'r') as f:
                     saved_perms = yaml.safe_load(f) or {}
                     self.permissions.update(saved_perms)
-                logger.info("Permissions loaded from config")
+                logger.info(f"Permissions loaded from {permissions_file}")
             except Exception as e:
                 logger.error(f"Failed to load permissions: {e}")
         
@@ -559,13 +571,15 @@ class ShellWindow(QMainWindow):
         import os
         import yaml
         
-        os.makedirs("config", exist_ok=True)
-        permissions_file = os.path.join("config", "permissions.yaml")
+        # Use writable config location (AppData on Windows, not bundled _internal)
+        config_dir = os.path.join(os.getenv('APPDATA', '.'), 'E.V3', 'config')
+        os.makedirs(config_dir, exist_ok=True)
+        permissions_file = os.path.join(config_dir, "permissions.yaml")
         
         try:
             with open(permissions_file, 'w') as f:
                 yaml.dump(self.permissions, f, default_flow_style=False)
-            logger.info("Permissions saved to config")
+            logger.info(f"Permissions saved to {permissions_file}")
         except Exception as e:
             logger.error(f"Failed to save permissions: {e}")
     

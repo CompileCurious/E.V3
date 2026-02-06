@@ -54,21 +54,36 @@ def _choose_icon():
             return f"--icon={path}"
     return ""
 
+# Find llama_cpp lib directory for bundling DLLs
+import sysconfig
+site_packages = sysconfig.get_path('purelib')
+llama_cpp_lib = Path(site_packages) / "llama_cpp" / "lib"
+
 service_cmd = [
     sys.executable, "-m", "PyInstaller",
     "--name=Kernel",
-    "--onefile",
+    "--onedir",
     "--noconsole",
+    "--noconfirm",
     _choose_icon(),
     "--add-data=config;config",
+    "--add-data=models;models",
+    "--add-data=assets;assets",
     "--hidden-import=win32timezone",
     "--hidden-import=pywintypes",
     "--hidden-import=win32api",
     "--hidden-import=win32event",
     "--hidden-import=win32service",
     "--hidden-import=servicemanager",
+    "--hidden-import=llama_cpp",
+    "--hidden-import=llama_cpp.llama_cpp",
     "main_service.py"
 ]
+
+# Add llama_cpp lib DLLs if they exist
+if llama_cpp_lib.exists():
+    service_cmd.insert(-1, f"--add-data={llama_cpp_lib};llama_cpp/lib")
+
 service_cmd = [arg for arg in service_cmd if arg]  # Remove empty strings
 
 try:
@@ -84,10 +99,13 @@ print("[3/5] Building shell executable...")
 ui_cmd = [
     sys.executable, "-m", "PyInstaller",
     "--name=Shell",
-    "--onefile",
+    "--onedir",
     "--windowed",
+    "--noconfirm",
     _choose_icon(),
     "--add-data=config;config",
+    "--add-data=models;models",
+    "--add-data=assets;assets",
     "--hidden-import=PySide6.QtCore",
     "--hidden-import=PySide6.QtGui",
     "--hidden-import=PySide6.QtWidgets",

@@ -223,6 +223,17 @@ class OpenGLRenderer(QOpenGLWidget):
     
     def load_model(self):
         """Load 3D character model"""
+        import sys
+        import os
+        
+        # Helper for PyInstaller compatibility
+        def get_resource_path(relative_path: str) -> str:
+            try:
+                base_path = sys._MEIPASS
+            except AttributeError:
+                base_path = os.path.abspath(".")
+            return os.path.join(base_path, relative_path)
+        
         model_path = self.config.get("ui", {}).get("model", {}).get("model_path", "")
         
         logger.info(f"Loading model with path: '{model_path}'")
@@ -232,16 +243,19 @@ class OpenGLRenderer(QOpenGLWidget):
             self.model = ModelLoader.create_simple_character()
             return
         
+        # Resolve path for PyInstaller
+        full_model_path = get_resource_path(model_path)
+        
         # Try to load model
-        logger.info(f"Attempting to load model from: {model_path}")
-        if model_path.endswith('.vrm'):
+        logger.info(f"Attempting to load model from: {full_model_path}")
+        if full_model_path.endswith('.vrm'):
             logger.info("Detected VRM format")
-            self.model = ModelLoader.load_vrm(model_path)
-        elif model_path.endswith(('.gltf', '.glb')):
+            self.model = ModelLoader.load_vrm(full_model_path)
+        elif full_model_path.endswith(('.gltf', '.glb')):
             logger.info("Detected GLTF/GLB format")
-            self.model = ModelLoader.load_gltf(model_path)
+            self.model = ModelLoader.load_gltf(full_model_path)
         else:
-            logger.warning(f"Unsupported model format: {model_path}")
+            logger.warning(f"Unsupported model format: {full_model_path}")
             self.model = ModelLoader.create_simple_character()
         
         if not self.model:

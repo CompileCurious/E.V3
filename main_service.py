@@ -4,6 +4,7 @@ Microkernel architecture with modular capabilities
 """
 
 import sys
+import os
 import yaml
 import win32event
 import win32api
@@ -13,6 +14,16 @@ from pathlib import Path
 
 from kernel import Kernel
 from modules import StateModule, EventModule, LLMModule, CalendarModule, IPCModule, SystemModule
+
+
+def get_resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 def check_single_instance():
@@ -31,9 +42,10 @@ def check_single_instance():
 def load_config(config_path: str = "config/config.yaml"):
     """Load configuration from YAML"""
     try:
-        with open(config_path, 'r') as f:
+        config_full_path = get_resource_path(config_path)
+        with open(config_full_path, 'r') as f:
             config = yaml.safe_load(f)
-        logger.info(f"Configuration loaded from {config_path}")
+        logger.info(f"Configuration loaded from {config_full_path}")
         return config
     except Exception as e:
         logger.error(f"Failed to load config: {e}")

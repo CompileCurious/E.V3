@@ -7,7 +7,18 @@ Privacy: Strict controls to prevent data leakage
 from typing import Optional, Dict, Any, List
 from loguru import logger
 import os
+import sys
 from abc import ABC, abstractmethod
+
+
+def get_resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 class LLMBase(ABC):
@@ -52,7 +63,7 @@ class LocalLLM(LLMBase):
             else:
                 model_file = self.config.get("deep_model", "mistral-7b-instruct-v0.2.Q4_K_M.gguf")
             
-            full_path = os.path.join(model_path, model_file)
+            full_path = get_resource_path(os.path.join(model_path, model_file))
             
             logger.info(f"Attempting to load LLM from: {full_path}")
             

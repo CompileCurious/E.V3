@@ -4,6 +4,7 @@ Connects to background service via IPC and displays 3D companion
 """
 
 import sys
+import os
 import yaml
 import win32event
 import win32api
@@ -17,6 +18,16 @@ from loguru import logger
 from ui.window import ShellWindow
 from ui.speech import SpeechManager
 from ipc import IPCClient
+
+
+def get_resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 def check_single_instance():
@@ -54,7 +65,7 @@ class EV3UIApplication(QObject):
         self.app.setApplicationName("E.V3 Shell")
         # Use project icon if available
         try:
-            icon_path = "assets/E.V3.ico"
+            icon_path = get_resource_path("assets/E.V3.ico")
             self.app.setWindowIcon(QIcon(icon_path))
         except Exception:
             pass
@@ -74,7 +85,8 @@ class EV3UIApplication(QObject):
     def _load_config(self, config_path: str):
         """Load configuration"""
         try:
-            with open(config_path, 'r') as f:
+            config_full_path = get_resource_path(config_path)
+            with open(config_full_path, 'r') as f:
                 config = yaml.safe_load(f)
             return config
         except Exception as e:
