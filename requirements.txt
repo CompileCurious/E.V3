@@ -1,11 +1,11 @@
 # E.V3 Core Dependencies
 # Install with: pip install -r requirements.txt
-# Note: llama-cpp-python should be installed separately (see README)
+# Note: LLM inference is now handled by the C++ kernel (see kernel_cpp/docs/BUILD.md)
 
 # === Core Framework ===
 PySide6>=6.6.0              # Qt6 GUI framework for UI
 PyOpenGL>=3.1.7             # OpenGL for 3D rendering
-numpy>=1.24.0               # Array operations (also required by llama-cpp)
+numpy>=1.24.0               # Array operations
 loguru>=0.7.0               # Enhanced logging
 pyyaml>=6.0.1               # YAML configuration
 
@@ -23,15 +23,13 @@ Pillow>=10.0.0              # Image/texture loading
 # === Optional: Neural TTS ===
 # onnxruntime>=1.16.0       # For Piper TTS models (uncomment if needed)
 
-# === LLM Support (INSTALL SEPARATELY) ===
-# llama-cpp-python>=0.3.0   # Local LLM inference
+# === LLM Support ===
+# The C++ kernel now handles all LLM inference directly via llama.cpp.
+# No Python LLM dependencies are required!
+# See kernel_cpp/docs/BUILD.md for build instructions.
 #
-# Install with one of:
-#   pip install llama-cpp-python                    # CPU-only
-#   pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121  # CUDA
-#
-# Or use pre-built wheel from repo (if available):
-#   pip install llama_cpp_python-0.3.2-cp313-cp313-win_amd64.whl
+# Legacy Python LLM support (NOT RECOMMENDED - use C++ kernel instead):
+# pip install llama-cpp-python  # Only if you need the old Python kernel
 
 # === Optional: External LLM API ===
 # openai>=1.0.0             # For GPT API (uncomment if using external LLM)
