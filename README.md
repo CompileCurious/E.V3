@@ -10,7 +10,7 @@ A privacy-first desktop companion with a 3D animated character, built on a **mic
 
 ## 🚀 What's New: C++ Kernel
 
-**E.V3 v2.0** introduces a high-performance **C++ kernel** for dramatically faster LLM inference:
+**E.V3 v0.2** introduces a high-performance **C++ kernel** for dramatically faster LLM inference:
 
 - **2-3x faster token generation** (40-60 tok/s vs 20-30 tok/s)
 - **Persistent model loading** - models stay in memory, no reload per request
