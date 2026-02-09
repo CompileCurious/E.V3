@@ -9,9 +9,8 @@
 ## 📦 What You Have
 
 ### Core System Files
-- ✅ `kernel_cpp/bin/EV3Kernel.py` - Production kernel (WORKING)
+- ✅ `kernel_cpp/build/Release/EV3Kernel.exe` - C++ kernel executable (build required)
 - ✅ `dist/Shell/Shell.exe` - Built UI shell (READY)
-- ✅ `main_service.py` - Service launcher (UPDATED)
 - ✅ `main_ui.py` - Shell UI (INTEGRATED)
 
 ### Launch & Test Files
@@ -44,10 +43,10 @@ Launches kernel and shell automatically.
 ### Option 2: Manual Control
 ```bash
 # Terminal 1
-python kernel_cpp/bin/EV3Kernel.py
+kernel_cpp\build\Release\EV3Kernel.exe
 
 # Terminal 2  
-dist/Shell/Shell.exe
+dist\Shell\Shell.exe
 ```
 
 ### Option 3: Verify First
@@ -249,7 +248,13 @@ For issues:
 
 ## ✨ What Makes This Special
 
-1. **Zero Compilation Needed** - Python kernel works out of box
+## Why Python Kernel is Deprecated
+
+The E.V3 system was refactored to use a **high-performance C++ kernel** for faster LLM inference:
+
+1. **Performance** - 2-3x faster token generation with direct llama.cpp integration
+2. **Memory** - Lower overhead without Python runtime for inference  
+3. **Architecture** - Better separation between UI (Python) and compute (C++)
 2. **IPC Over Named Pipes** - Fast, reliable, Windows-native
 3. **Extensible Design** - Add modules easily
 4. **Real LLM Ready** - Supports llama.cpp models

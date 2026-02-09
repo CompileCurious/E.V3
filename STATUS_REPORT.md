@@ -8,14 +8,14 @@
 
 ## Executive Summary
 
-The E.V3 system is now fully operational with a complete Python kernel implementation that provides 100% feature parity with the planned C++ kernel. The system is production-ready and all integration tests pass.
+The E.V3 system uses a high-performance C++ kernel with llama.cpp integration for fast LLM inference. The kernel communicates with the Python shell via Windows Named Pipes IPC.
 
 ---
 
 ## What Was Accomplished Today
 
 ### 1. ✅ Kernel Integration (COMPLETE)
-- Created lightweight Python kernel: `kernel_cpp/bin/EV3Kernel.py`
+- High-performance C++ kernel with llama.cpp integration
 - Windows Named Pipes IPC server fully functional
 - All kernel commands working:
   - `ping` - Keepalive and responsiveness check
@@ -54,11 +54,11 @@ All tests passing:
 │                                         │
 │  ┌──────────────┐    ┌─────────────┐  │
 │  │   Kernel     │◄──►│   Shell     │  │
-│  │  (Python)    │    │  (PyInstaller
-│  │              │    │  .exe)      │  │
-│  │ • IPC Server │    │ • PySide6   │  │
-│  │ • LLM Engine │    │ • OpenGL    │  │
-│  │ • Logging    │    │ • IPC Client│  │
+│  │   (C++)      │    │  (Python    │  │
+│  │              │    │   PyQt6)    │  │
+│  │ • IPC Server │    │ • OpenGL    │  │
+│  │ • llama.cpp  │    │ • IPC Client│  │
+│  │ • Logging    │    │ • 3D Render │  │
 │  └──────────────┘    └─────────────┘  │
 │        ▲                                 │
 │        │                                 │
@@ -79,12 +79,12 @@ start_ev3.bat
 ### Option B: Manual
 **Terminal 1:**
 ```cmd
-python kernel_cpp/bin/EV3Kernel.py
+kernel_cpp\build\Release\EV3Kernel.exe
 ```
 
 **Terminal 2:**
 ```cmd
-dist/Shell/Shell.exe
+dist\Shell\Shell.exe
 ```
 
 ---

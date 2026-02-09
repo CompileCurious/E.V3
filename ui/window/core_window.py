@@ -12,6 +12,17 @@ from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPixmap, QFont, QPaint
 from PySide6.QtSvg import QSvgRenderer
 from loguru import logger
 import os
+import sys
+
+
+def get_resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 class SlidingToggle(QWidget):
@@ -536,14 +547,14 @@ class ModulesWindow(QMainWindow):
         # Try to load various image formats (check multiple case variations)
         image_paths = [
             # PNG (easiest, no dependencies)
-            os.path.join("assets", "Core_Frame.png"),
-            os.path.join("assets", "core_frame.png"),
+            get_resource_path("assets/Core_Frame.png"),
+            get_resource_path("assets/core_frame.png"),
             # SVG
-            os.path.join("assets", "Core_Frame.svg"),
-            os.path.join("assets", "core_frame.svg"),
+            get_resource_path("assets/Core_Frame.svg"),
+            get_resource_path("assets/core_frame.svg"),
             # EPS (requires Ghostscript)
-            os.path.join("assets", "Core_Frame.eps"),
-            os.path.join("assets", "core_frame.eps"),
+            get_resource_path("assets/Core_Frame.eps"),
+            get_resource_path("assets/core_frame.eps"),
         ]
         
         pixmap = None
@@ -551,6 +562,7 @@ class ModulesWindow(QMainWindow):
         # Try each path
         for img_path in image_paths:
             if not os.path.exists(img_path):
+                logger.debug(f"Image path does not exist: {img_path}")
                 continue
                 
             try:
@@ -618,7 +630,7 @@ class ModulesWindow(QMainWindow):
             self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
         else:
             # Draw placeholder robot frame
-            logger.info("SVG not found, drawing placeholder robot")
+            logger.info("Image not found, drawing placeholder robot")
             
             # Colors
             frame_color = QColor(100, 150, 200, 180)
@@ -684,24 +696,44 @@ class ModulesWindow(QMainWindow):
             if self.pending_changes:
                 # Save to main config.yaml
                 import yaml
-                config_file = "config/config.yaml"
+                config_file = get_resource_path("config/config.yaml")
                 
                 try:
+                    # Ensure config directory exists
+                    os.makedirs(os.path.dirname(config_file), exist_ok=True)
+                    
                     # Load existing config
-                    with open(config_file, 'r') as f:
-                        config = yaml.safe_load(f)
+                    if os.path.exists(config_file):
+                        with open(config_file, 'r') as f:
+                            config = yaml.safe_load(f) or {}
+                    else:
+                        config = {}
                     
                     # Update LLM settings
                     if "llm_mode" in self.pending_changes:
+                        if "llm" not in config:
+                            config["llm"] = {}
                         config["llm"]["mode"] = self.pending_changes["llm_mode"]
                     
                     if "fast_model" in self.pending_changes:
+                        if "llm" not in config:
+                            config["llm"] = {}
+                        if "local" not in config["llm"]:
+                            config["llm"]["local"] = {}
                         config["llm"]["local"]["fast_model"] = self.pending_changes["fast_model"]
                     
                     if "deep_model" in self.pending_changes:
+                        if "llm" not in config:
+                            config["llm"] = {}
+                        if "local" not in config["llm"]:
+                            config["llm"]["local"] = {}
                         config["llm"]["local"]["deep_model"] = self.pending_changes["deep_model"]
                     
                     if "character_model" in self.pending_changes:
+                        if "ui" not in config:
+                            config["ui"] = {}
+                        if "model" not in config["ui"]:
+                            config["ui"]["model"] = {}
                         config["ui"]["model"]["model_path"] = f"models/character/{self.pending_changes['character_model']}"
                     
                     # Update module settings
@@ -750,7 +782,7 @@ class ModulesWindow(QMainWindow):
                     logger.info("Module configuration committed successfully")
                 
                 except Exception as e:
-                    logger.error(f"Failed to save configuration: {e}")
+                    logger.error(f"Failed to save configuration: {e}", exc_info=True)
                     QMessageBox.critical(
                         self,
                         "Save Failed",

@@ -34,20 +34,25 @@ E.V3 has been successfully refactored to use a **high-performance C++ kernel** w
 - Old Python kernel (`kernel/`) ✗
 - Modular Python code (`modules/`) ✗  
 - Python LLM service (`service/llm/`) ✗
-
-✅ **Mock Kernel for Development**:
-- `kernel_cpp/bin/ev3_kernel.py` - Python mock kernel (for testing)
-- `kernel_cpp/bin/EV3Kernel.bat` - Windows launcher
+- Deprecated Python mock kernels ✗
 
 ## Building & Testing
 
-### Option 1: Quick Test with Mock Kernel (Recommended for Initial Testing)
+### Build C++ Kernel
 
-The mock kernel provides a working IPC interface for testing the shell without C++ dependencies.
+Requires CMake 3.21+ and a C++ compiler (MSVC 2022, GCC 12+, or Clang 14+).
 
-#### Build
 ```bash
-# Build Shell UI only
+cd kernel_cpp
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLAMA_CUBLAS=ON
+cmake --build . --config Release
+```
+
+### Build Shell UI
+
+```bash
 cd E.V3
 python -m PyInstaller Shell.spec --distpath build\shell_dist --noconfirm
 ```
@@ -57,17 +62,16 @@ Or use the build script:
 build.bat
 ```
 
-#### Run
-**Terminal 1: Start the Kernel**
+### Run
+
+**Terminal 1: Start the C++ Kernel**
 ```bash
-cd kernel_cpp/bin
-EV3Kernel.bat
+kernel_cpp\build\Release\EV3Kernel.exe
 ```
 
 **Terminal 2: Start the Shell**
 ```bash
-cd build/shell_dist/Shell
-Shell.exe
+build\shell_dist\Shell\Shell.exe
 ```
 
 ### Option 2: Production Build with Real C++ Kernel
@@ -131,10 +135,10 @@ build/shell_dist/Shell/Shell.exe
 ## Files Overview
 
 ### New/Modified
-- `main_service.py` - Kernel launcher using CppKernelBridge
+## File Structure
+
+- `main_ui.py` - Shell launcher using CppKernelBridge
 - `kernel_cpp/__init__.py` - Python bridge for C++ kernel
-- `kernel_cpp/bin/ev3_kernel.py` - Mock kernel for development
-- `kernel_cpp/bin/EV3Kernel.bat` - Windows launcher
 - `Shell.spec` - PyInstaller spec for shell-only build
 - `build.bat` - Build script
 

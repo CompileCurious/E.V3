@@ -197,7 +197,9 @@ target_link_libraries(ev3_kernel_exe
 
 set_target_properties(ev3_kernel_exe PROPERTIES
     OUTPUT_NAME "EV3Kernel"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist/Kernel"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/../dist/Kernel"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/../dist/Kernel"
 )
 
 # Copy config and models directories for development
@@ -244,51 +246,51 @@ else()
 endif()
 
 # ============================================================================
-# Installation
+# Installation (Commented out - not needed for local builds)
 # ============================================================================
 
-include(GNUInstallDirs)
+# include(GNUInstallDirs)
 
-install(TARGETS ev3_kernel ev3_kernel_exe
-    EXPORT EV3KernelTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# install(TARGETS ev3_kernel ev3_kernel_exe
+#     EXPORT EV3KernelTargets
+#     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+# )
 
-install(DIRECTORY include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+# install(DIRECTORY include/
+#     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+# )
 
-install(EXPORT EV3KernelTargets
-    FILE EV3KernelTargets.cmake
-    NAMESPACE EV3::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
-)
+# install(EXPORT EV3KernelTargets
+#     FILE EV3KernelTargets.cmake
+#     NAMESPACE EV3::
+#     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
+# )
 
 # ============================================================================
-# Package Configuration
+# Package Configuration (Commented out - not needed for local builds)
 # ============================================================================
 
-include(CMakePackageConfigHelpers)
+# include(CMakePackageConfigHelpers)
 
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EV3KernelConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfig.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
-)
+# configure_package_config_file(
+#     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EV3KernelConfig.cmake.in"
+#     "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfig.cmake"
+#     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
+# )
 
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
+# write_basic_package_version_file(
+#     "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfigVersion.cmake"
+#     VERSION ${PROJECT_VERSION}
+#     COMPATIBILITY SameMajorVersion
+# )
 
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfigVersion.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
-)
+# install(FILES
+#     "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfig.cmake"
+#     "${CMAKE_CURRENT_BINARY_DIR}/EV3KernelConfigVersion.cmake"
+#     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/EV3Kernel
+# )
 
 # ============================================================================
 # Summary

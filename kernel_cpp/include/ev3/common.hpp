@@ -24,7 +24,6 @@
 #include <shared_mutex>
 #include <condition_variable>
 #include <variant>
-#include <expected>
 #include <format>
 #include <span>
 #include <source_location>
@@ -85,8 +84,111 @@ struct Error {
     }
 };
 
+// ============================================================================
+// Result Type (C++20-compatible alternative to std::expected)
+// ============================================================================
+
+/**
+ * @brief Result type that holds either a value or an error
+ * @tparam T The success value type
+ * 
+ * This is a C++20-compatible implementation similar to std::expected<T, Error>
+ * but works with MSVC without C++23 features.
+ */
 template <typename T>
-using Result = std::expected<T, Error>;
+class Result {
+private:
+    std::variant<T, Error> data_;
+    bool has_value_;
+
+public:
+    // Constructors
+    Result(const T& value) : data_(value), has_value_(true) {}
+    Result(T&& value) : data_(std::move(value)), has_value_(true) {}
+    Result(const Error& error) : data_(error), has_value_(false) {}
+    Result(Error&& error) : data_(std::move(error)), has_value_(false) {}
+    
+    // Check if result contains a value
+    [[nodiscard]] bool has_value() const noexcept { return has_value_; }
+    [[nodiscard]] explicit operator bool() const noexcept { return has_value_; }
+    [[nodiscard]] bool operator!() const noexcept { return !has_value_; }
+    
+    // Access value (throws if error)
+    [[nodiscard]] T& value() & {
+        if (!has_value_) throw std::runtime_error("Result contains error");
+        return std::get<T>(data_);
+    }
+    
+    [[nodiscard]] const T& value() const & {
+        if (!has_value_) throw std::runtime_error("Result contains error");
+        return std::get<T>(data_);
+    }
+    
+    [[nodiscard]] T&& value() && {
+        if (!has_value_) throw std::runtime_error("Result contains error");
+        return std::move(std::get<T>(data_));
+    }
+    
+    // Access error (throws if value)
+    [[nodiscard]] Error& error() & {
+        if (has_value_) throw std::runtime_error("Result contains value");
+        return std::get<Error>(data_);
+    }
+    
+    [[nodiscard]] const Error& error() const & {
+        if (has_value_) throw std::runtime_error("Result contains value");
+        return std::get<Error>(data_);
+    }
+    
+    // Dereference operators (like std::expected)
+    [[nodiscard]] T& operator*() & { return value(); }
+    [[nodiscard]] const T& operator*() const & { return value(); }
+    [[nodiscard]] T&& operator*() && { return std::move(value()); }
+    
+    [[nodiscard]] T* operator->() { return &value(); }
+    [[nodiscard]] const T* operator->() const { return &value(); }
+    
+    // value_or
+    template <typename U>
+    [[nodiscard]] T value_or(U&& default_value) const & {
+        return has_value_ ? std::get<T>(data_) : static_cast<T>(std::forward<U>(default_value));
+    }
+    
+    template <typename U>
+    [[nodiscard]] T value_or(U&& default_value) && {
+        return has_value_ ? std::move(std::get<T>(data_)) : static_cast<T>(std::forward<U>(default_value));
+    }
+};
+
+// Specialization for void
+template <>
+class Result<void> {
+private:
+    std::optional<Error> error_;
+
+public:
+    Result() : error_(std::nullopt) {}
+    Result(const Error& error) : error_(error) {}
+    Result(Error&& error) : error_(std::move(error)) {}
+    
+    [[nodiscard]] bool has_value() const noexcept { return !error_.has_value(); }
+    [[nodiscard]] explicit operator bool() const noexcept { return !error_.has_value(); }
+    [[nodiscard]] bool operator!() const noexcept { return error_.has_value(); }
+    
+    [[nodiscard]] Error& error() & {
+        if (!error_) throw std::runtime_error("Result contains value");
+        return *error_;
+    }
+    
+    [[nodiscard]] const Error& error() const & {
+        if (!error_) throw std::runtime_error("Result contains value");
+        return *error_;
+    }
+    
+    void value() const {
+        if (error_) throw std::runtime_error("Result contains error");
+    }
+};
 
 inline Error make_error(ErrorCategory cat, int code, std::string_view msg,
                         std::source_location loc = std::source_location::current()) {

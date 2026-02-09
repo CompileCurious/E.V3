@@ -40,9 +40,8 @@ def main():
     print("-" * 70)
     
     required_files = [
-        ("Kernel script", base / "kernel_cpp/bin/EV3Kernel.py"),
+        ("Kernel executable", base / "kernel_cpp/build/Release/EV3Kernel.exe"),
         ("Shell executable", base / "dist/Shell/Shell.exe"),
-        ("Main service", base / "main_service.py"),
         ("Main UI", base / "main_ui.py"),
         ("Test script", base / "test_kernel.py"),
         ("Launcher batch", base / "start_ev3.bat"),
@@ -138,7 +137,7 @@ def main():
             win32file.CloseHandle(handle)
             
         except pywintypes.error:
-            print("○ Kernel not currently running (this is normal, start it with: python kernel_cpp/bin/EV3Kernel.py)")
+            print("○ Kernel not currently running (this is normal, start it with: kernel_cpp\\build\\Release\\EV3Kernel.exe)")
     except ImportError:
         print("○ pywin32 not available for live test")
     
@@ -149,7 +148,7 @@ def main():
         print("="*70)
         print("\nTo start E.V3:")
         print("  Method 1: start_ev3.bat")
-        print("  Method 2: python kernel_cpp/bin/EV3Kernel.py  (then)")
+        print("  Method 2: kernel_cpp\\build\\Release\\EV3Kernel.exe  (then)")
         print("            dist/Shell/Shell.exe")
         print("\nTo test kernel: python test_kernel.py")
         print("="*70)

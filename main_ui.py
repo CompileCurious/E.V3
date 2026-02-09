@@ -126,10 +126,8 @@ class EV3UIApplication(QObject):
         # Connect the signal to deliver LLM responses
         self.llm_response_signal.connect(self._deliver_llm_response)
         
-        # Connect chat message signal
-        if hasattr(self.window, 'send_chat_message'):
-            # Override the send_chat_message method to use IPC
-            self.window.send_chat_message = self._send_message_via_ipc
+        # Setup callback for chat messages to be sent via IPC
+        self.window._ipc_send_callback = self._send_message_via_ipc
         
         # Setup IPC client
         ipc_config = self.config.get("ipc", {})

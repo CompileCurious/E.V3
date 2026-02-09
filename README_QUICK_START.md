@@ -16,9 +16,11 @@ This launches kernel and shell automatically.
 
 ### Option 2: Manual Launch
 
-**Terminal 1 - Start Kernel:**
+## Quick Start (2 Minutes)
+
+**Terminal 1: Start Kernel**
 ```bash
-python kernel_cpp/bin/EV3Kernel.py
+kernel_cpp\build\Release\EV3Kernel.exe
 ```
 
 **Terminal 2 - Start Shell:**

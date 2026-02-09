@@ -1034,6 +1034,8 @@ class ShellWindow(QMainWindow):
         """Open the chat input window"""
         if self.chat_window is None:
             self.chat_window = ChatWindow(self)
+            # Connect the message_sent signal directly to the send method
+            # This will be properly routed by main_ui.py
             self.chat_window.message_sent.connect(self.send_chat_message)
         
         # Position chat window next to character
@@ -1090,11 +1092,14 @@ class ShellWindow(QMainWindow):
     
     def send_chat_message(self, message: str):
         """Send chat message to kernel via IPC"""
-        logger.info(f"Sending chat message: {message[:50]}...")
+        logger.info(f"send_chat_message called with: {message[:50]}...")
         
-        # This should be connected to IPC client in main_ui.py
-        # For now, just log it
-        # self.ipc_client.send_message("user_message", {"message": message})
+        # Check if we have access to the parent app's IPC client
+        # The main_ui.py EV3UIApplication will have hooked into this
+        if hasattr(self, '_ipc_send_callback'):
+            self._ipc_send_callback(message)
+        else:
+            logger.warning("No IPC callback available - chat message will not be sent")
     
     def display_chat_response(self, response: str):
         """Display LLM response in chat window"""
